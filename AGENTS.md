@@ -30,6 +30,9 @@ Claude Code, Codex 등 이 저장소에서 일하는 모든 에이전트와 사�
 | `npm test` | 단위 테스트 (Vitest) |
 | `npm run build` | 프로덕션 번들 (`out/`) |
 | `npm run e2e` | Electron 스모크 테스트 (Playwright, 가짜 claude 사용) |
+| `TRELLIS_REAL_CLAUDE=1 npx playwright test real-claude` | 실제 claude로 전 구간 확인 (구독 사용량 소모, 임시 폴더 사용) |
+| `TRELLIS_BROWSE_PATH=<폴더> npx playwright test browse` | 기존 폴더를 Claude 없이 읽기 전용으로 열어 패널 스크린샷 |
+| `npx electron scripts/render-icon.mjs` | `build/icon.svg` → `build/icon.png` |
 | `npm run dist:mac` / `npm run dist:win` | 설치 파일 생성 (각 OS에서 실행) |
 | `npm run format` | Prettier로 포맷 정리 |
 
