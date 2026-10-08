@@ -1,0 +1,141 @@
+import { describe, expect, it } from 'vitest'
+import { buildTimeline, currentIntent, deriveAgentState, type TurnItem } from './timeline'
+import type { TrellisEvent } from './types'
+
+let seq = 0
+function ev<E extends TrellisEvent>(
+  partial: Omit<E, 'id' | 'projectId' | 'agent' | 'terminalId'> & Partial<E>,
+): E {
+  seq += 1
+  return {
+    id: `e${seq}`,
+    projectId: 'p',
+    agent: 'claude-code',
+    terminalId: 't1',
+    ...partial,
+  } as E
+}
+
+const tool = (files: string[] = [], command: string | null = null) => ({
+  tool: command ? 'Bash' : 'Edit',
+  files,
+  command,
+  detail: null,
+  durationMs: 5,
+})
+
+describe('buildTimeline', () => {
+  it('groups tool uses into the turn of their prompt and marks it done on stop', () => {
+    const items = buildTimeline([
+      ev({
+        kind: 'session.start',
+        ts: 1,
+        sessionId: 's',
+        promptId: null,
+        data: { source: 'startup', model: 'opus' },
+      }),
+      ev({
+        kind: 'prompt.submit',
+        ts: 2,
+        sessionId: 's',
+        promptId: 'p1',
+        data: { prompt: 'fix it' },
+      }),
+      ev({ kind: 'tool.use', ts: 3, sessionId: 's', promptId: 'p1', data: tool(['a.ts']) }),
+      ev({ kind: 'tool.use', ts: 4, sessionId: 's', promptId: 'p1', data: tool(['a.ts', 'b.ts']) }),
+      ev({
+        kind: 'turn.stop',
+        ts: 5,
+        sessionId: 's',
+        promptId: 'p1',
+        data: { lastMessage: 'done' },
+      }),
+    ])
+    expect(items.map((i) => i.type)).toEqual(['session', 'turn'])
+    const turn = items[1] as TurnItem
+    expect(turn.status).toBe('done')
+    expect(turn.files).toEqual(['a.ts', 'b.ts'])
+    expect(turn.tools).toHaveLength(2)
+    expect(turn.lastMessage).toBe('done')
+    expect(turn.endedAt).toBe(5)
+  })
+
+  it('falls back to the open turn of the session when promptId is missing', () => {
+    const items = buildTimeline([
+      ev({ kind: 'prompt.submit', ts: 1, sessionId: 's', promptId: null, data: { prompt: 'x' } }),
+      ev({ kind: 'tool.use', ts: 2, sessionId: 's', promptId: null, data: tool(['c.ts']) }),
+    ])
+    expect((items[0] as TurnItem).files).toEqual(['c.ts'])
+    expect((items[0] as TurnItem).status).toBe('running')
+  })
+
+  it('marks a turn waiting on a permission prompt and running again on the next tool', () => {
+    const base = [
+      ev({ kind: 'prompt.submit', ts: 1, sessionId: 's', promptId: 'p', data: { prompt: 'x' } }),
+      ev({
+        kind: 'notification',
+        ts: 2,
+        sessionId: 's',
+        promptId: null,
+        data: { type: 'permission_prompt', message: 'ok?' },
+      }),
+    ]
+    const waiting = buildTimeline(base)[0] as TurnItem
+    expect(waiting.status).toBe('waiting')
+    expect(waiting.waitingMessage).toBe('ok?')
+    const resumed = buildTimeline([
+      ...base,
+      ev({ kind: 'tool.use', ts: 3, sessionId: 's', promptId: 'p', data: tool([], 'ls') }),
+    ])[0] as TurnItem
+    expect(resumed.status).toBe('running')
+  })
+
+  it('treats a new prompt or session end as interrupting the open turn', () => {
+    const items = buildTimeline([
+      ev({ kind: 'prompt.submit', ts: 1, sessionId: 's', promptId: 'p1', data: { prompt: 'a' } }),
+      ev({ kind: 'prompt.submit', ts: 2, sessionId: 's', promptId: 'p2', data: { prompt: 'b' } }),
+      ev({
+        kind: 'session.end',
+        ts: 3,
+        sessionId: 's',
+        promptId: null,
+        data: { reason: 'prompt_input_exit' },
+      }),
+    ])
+    expect((items[0] as TurnItem).status).toBe('interrupted')
+    expect((items[1] as TurnItem).status).toBe('interrupted')
+    expect(items[2]?.type).toBe('session')
+  })
+
+  it('sorts events by time before building', () => {
+    const items = buildTimeline([
+      ev({ kind: 'turn.stop', ts: 3, sessionId: 's', promptId: 'p', data: { lastMessage: '' } }),
+      ev({ kind: 'prompt.submit', ts: 1, sessionId: 's', promptId: 'p', data: { prompt: 'a' } }),
+    ])
+    expect((items[0] as TurnItem).status).toBe('done')
+    expect((items[0] as TurnItem).lastMessage).toBeNull()
+  })
+})
+
+describe('deriveAgentState', () => {
+  it('reports the state of the latest turn for the session', () => {
+    const items = buildTimeline([
+      ev({ kind: 'prompt.submit', ts: 1, sessionId: 'a', promptId: 'p1', data: { prompt: 'x' } }),
+      ev({ kind: 'prompt.submit', ts: 2, sessionId: 'b', promptId: 'p2', data: { prompt: 'y' } }),
+      ev({ kind: 'turn.stop', ts: 3, sessionId: 'b', promptId: 'p2', data: { lastMessage: '' } }),
+    ])
+    expect(deriveAgentState(items, 'a')).toBe('working')
+    expect(deriveAgentState(items, 'b')).toBe('idle')
+    expect(deriveAgentState([], null)).toBe('idle')
+  })
+})
+
+describe('currentIntent', () => {
+  it('returns the latest intent', () => {
+    const intent = currentIntent([
+      ev({ kind: 'intent.set', ts: 1, sessionId: null, promptId: null, data: { text: 'old' } }),
+      ev({ kind: 'intent.set', ts: 5, sessionId: null, promptId: null, data: { text: 'new' } }),
+    ])
+    expect(intent?.data.text).toBe('new')
+  })
+})
