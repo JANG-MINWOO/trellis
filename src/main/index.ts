@@ -33,13 +33,14 @@ async function bootstrap(): Promise<void> {
   const projectsDir = path.join(dataDir, 'projects')
   const shellEnv = resolveShellEnv()
   let shellEnvResolved = false
-  let git: Git | null = null
   const env = async (): Promise<NodeJS.ProcessEnv> => (await shellEnv).env
-  void shellEnv.then((result) => {
+  // git is looked up on the login-shell PATH, so everything that needs it waits for that first.
+  const gitReady: Promise<Git | null> = shellEnv.then((result) => {
     shellEnvResolved = result.resolved
     const gitPath = findExecutable('git', result.env)
-    git = gitPath ? new Git(gitPath, () => result.env) : null
+    return gitPath ? new Git(gitPath, () => result.env) : null
   })
+  const git = (): Promise<Git | null> => gitReady
 
   const settings = await SettingsStore.load(path.join(dataDir, 'settings.json'))
   nativeTheme.themeSource = settings.get().theme
@@ -53,7 +54,7 @@ async function bootstrap(): Promise<void> {
     bridge.url,
   )
   const ptys = new PtyManager()
-  const changes = new ChangesService(() => git, projectsDir)
+  const changes = new ChangesService(git, projectsDir)
   const watcher = new ProjectWatcher()
   let mainWindow: BrowserWindow | null = null
 
@@ -80,7 +81,7 @@ async function bootstrap(): Promise<void> {
     watcher,
     env,
     shellEnvResolved: () => shellEnvResolved,
-    git: () => git,
+    git,
     window: () => mainWindow,
   }
 

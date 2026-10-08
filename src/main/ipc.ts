@@ -91,7 +91,7 @@ export function registerIpc(ctx: AppContext): void {
   handle(Invoke.filesList, async (id, relDir) => {
     const p = project(id)
     const inRepo = (await ctx.changes.repoInfo(p.path)) !== null
-    return listDirectory(p.path, asString(relDir), ctx.git(), inRepo)
+    return listDirectory(p.path, asString(relDir), await ctx.git(), inRepo)
   })
 
   handle(Invoke.editorOpen, async (id, rel) =>
@@ -147,6 +147,6 @@ export function registerIpc(ctx: AppContext): void {
   handle(Invoke.healthGet, async (id) => {
     const p = project(id)
     const inRepo = (await ctx.changes.repoInfo(p.path)) !== null
-    return computeHealth(p.path, ctx.git(), inRepo)
+    return computeHealth(p.path, await ctx.git(), inRepo)
   })
 }

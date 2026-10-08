@@ -30,12 +30,13 @@ export class ChangesService {
   private readonly queue = new KeyedSerialQueue()
 
   constructor(
-    private readonly git: () => Git | null,
+    /** Resolves once the login-shell environment (and with it git's location) is known. */
+    private readonly git: () => Promise<Git | null>,
     private readonly projectsDir: string,
   ) {}
 
   async repoInfo(root: string): Promise<RepoInfo | null> {
-    const git = this.git()
+    const git = await this.git()
     if (!git) return null
     const top = (await git.tryRun(root, ['rev-parse', '--show-toplevel']))?.trim()
     if (!top) return null
@@ -64,7 +65,7 @@ export class ChangesService {
 
   get(projectId: string, root: string, baseline: Baseline): Promise<ChangeReport> {
     return this.queue.run(projectId, async () => {
-      const git = this.git()
+      const git = await this.git()
       if (!git) return { kind: 'error', message: 'git-not-found' }
       try {
         const info = await this.repoInfo(root)
@@ -138,7 +139,7 @@ export class ChangesService {
   }
 
   async initRepo(root: string): Promise<{ ok: boolean; message?: string }> {
-    const git = this.git()
+    const git = await this.git()
     if (!git) return { ok: false, message: 'git-not-found' }
     try {
       await git.run(root, ['init'])
@@ -150,7 +151,7 @@ export class ChangesService {
 
   /** Tree object of the working tree as it is right now (tracked + untracked, honoring .gitignore). */
   private async snapshotTree(info: RepoInfo): Promise<string> {
-    const git = this.git()!
+    const git = (await this.git())!
     const realIndex = path.resolve(
       info.top,
       (await git.run(info.top, ['rev-parse', '--git-path', 'index'])).trim(),
@@ -179,7 +180,7 @@ export class ChangesService {
 
   /** Huge untracked files (datasets, build output that is not ignored) would bloat .git/objects. */
   private async largeUntracked(info: RepoInfo, scope: string): Promise<string[]> {
-    const git = this.git()!
+    const git = (await this.git())!
     const out = await git.tryRun(info.top, [
       'ls-files',
       '-z',

@@ -22,6 +22,7 @@ export interface AppContext {
   watcher: ProjectWatcher
   env(): Promise<NodeJS.ProcessEnv>
   shellEnvResolved(): boolean
-  git(): Git | null
+  /** Waits for the login-shell environment so the right git is used. */
+  git(): Promise<Git | null>
   window(): BrowserWindow | null
 }

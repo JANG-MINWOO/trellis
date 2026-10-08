@@ -137,7 +137,11 @@ export function ChangesPanel() {
       {report.totals.files === 0 ? (
         <EmptyState
           title={t('changes.empty')}
-          body={baseline === 'session' ? t('changes.emptySession') : t('changes.emptyHead')}
+          body={
+            baseline === 'session' && !report.baselineFallback
+              ? t('changes.emptySession')
+              : t('changes.emptyHead')
+          }
           className="py-10"
         />
       ) : (
