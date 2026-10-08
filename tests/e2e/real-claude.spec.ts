@@ -1,0 +1,67 @@
+// Runs the real Claude Code CLI inside Trellis. Opt-in (uses your subscription):
+//   TRELLIS_REAL_CLAUDE=1 npx playwright test real-claude
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { _electron as electron, expect, test } from '@playwright/test'
+
+const root = path.resolve(__dirname, '..', '..')
+const shots = process.env.TRELLIS_SCREENSHOTS
+
+test('real claude: trust prompt, Korean prompt with Shift+Enter, hooks reach the panels', async () => {
+  test.skip(process.env.TRELLIS_REAL_CLAUDE !== '1', 'opt-in: set TRELLIS_REAL_CLAUDE=1')
+  test.setTimeout(240_000)
+  const project = mkdtempSync(path.join(os.tmpdir(), 'trellis-real-'))
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: project })
+  writeFileSync(path.join(project, 'README.md'), '# real claude test\n')
+  const userData = mkdtempSync(path.join(os.tmpdir(), 'trellis-real-data-'))
+
+  const app = await electron.launch({
+    args: [root],
+    env: {
+      ...process.env,
+      TRELLIS_E2E: '1',
+      TRELLIS_USER_DATA: userData,
+      TRELLIS_E2E_PICK_FOLDER: project,
+    },
+  })
+  try {
+    const win = await app.firstWindow()
+    await win.evaluate(() =>
+      window.trellis.settings.update({
+        language: 'ko',
+        claude: { extraArgs: '--model haiku --permission-mode acceptEdits' },
+      }),
+    )
+    await win.getByRole('button', { name: '폴더 열기' }).first().click()
+
+    // New folder → Claude asks whether to trust it. Default is "No, exit": move down, confirm.
+    const term = win.locator('.xterm').first()
+    await expect(term).toBeVisible({ timeout: 20_000 })
+    await win.waitForTimeout(5000)
+    if (shots) await win.screenshot({ path: path.join(shots, 'real-01-trust.png') })
+    await term.click()
+    await win.keyboard.press('ArrowDown')
+    await win.keyboard.press('Enter')
+    await win.waitForTimeout(6000)
+
+    await win.keyboard.type('hello.txt 파일을 만들고 안에 hi 라고 써 줘.')
+    await win.keyboard.press('Shift+Enter')
+    await win.keyboard.type('끝나면 한국어로 "완료"라고만 답해 줘.')
+    await win.keyboard.press('Enter')
+
+    const turn = win.getByTestId('turn-card').first()
+    await expect(turn).toContainText('hello.txt', { timeout: 120_000 })
+    await expect(turn).toContainText('완료', { timeout: 120_000 })
+    const prompt = await turn.locator('p').first().innerText()
+    expect(prompt).toContain('\n')
+    if (shots) await win.screenshot({ path: path.join(shots, 'real-02-done.png') })
+
+    await win.getByRole('tab', { name: /변경/ }).click()
+    await expect(win.getByTestId('changes')).toContainText('hello.txt', { timeout: 20_000 })
+    if (shots) await win.screenshot({ path: path.join(shots, 'real-03-changes.png') })
+  } finally {
+    await app.close()
+  }
+})

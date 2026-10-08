@@ -6,6 +6,25 @@ import type { AgentAdapter, LaunchRequest } from '../types'
 import { BRIDGE_ENV, buildHookSettings } from './hook-settings'
 import { normalizeClaudeHook } from './normalize'
 
+/**
+ * Variables Claude Code sets for the processes it spawns (observed in 2.1.29x). User configuration
+ * such as CLAUDE_CONFIG_DIR or CLAUDE_CODE_USE_BEDROCK is deliberately not matched.
+ */
+const SESSION_MARKERS = new Set([
+  'CLAUDECODE',
+  'AI_AGENT',
+  'CLAUDE_PID',
+  'CLAUDE_EFFORT',
+  'CLAUDE_CODE_ENTRYPOINT',
+  'CLAUDE_CODE_EXECPATH',
+  'CLAUDE_CODE_SSE_PORT',
+])
+const SESSION_MARKER_PREFIXES = [
+  'CLAUDE_CODE_SESSION_',
+  'CLAUDE_CODE_CHILD_',
+  'CLAUDE_CODE_MESSAGING_',
+]
+
 /** Flags that choose which conversation to open; if the user passes one we do not add ours. */
 const SESSION_FLAGS = ['--continue', '-c', '--resume', '-r', '--session-id', '--fork-session']
 
@@ -65,4 +84,12 @@ export const claudeCodeAdapter: AgentAdapter = {
   },
 
   normalize: normalizeClaudeHook,
+
+  scrubInheritedEnv(env) {
+    for (const key of Object.keys(env)) {
+      const upper = key.toUpperCase()
+      if (SESSION_MARKERS.has(upper) || SESSION_MARKER_PREFIXES.some((p) => upper.startsWith(p)))
+        delete env[key]
+    }
+  },
 }

@@ -30,4 +30,9 @@ export interface AgentAdapter {
   /** Env vars the bridge config refers to. */
   bridgeEnv(token: string, projectId: string, terminalId: string): Record<string, string>
   normalize(raw: unknown, context: NormalizeContext): TrellisEvent | null
+  /**
+   * Removes variables a parent agent session leaks into Trellis (e.g. when the dev build is started
+   * from Claude Code). Left in place they make a new session think it is a sub-session.
+   */
+  scrubInheritedEnv(env: Record<string, string>): void
 }

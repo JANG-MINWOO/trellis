@@ -16,13 +16,10 @@ export function setEnv(env: NodeJS.ProcessEnv, name: string, value: string): voi
 }
 
 /**
- * Variables that would make a child believe it runs inside another tool. They leak in when the
- * dev build is started from a terminal or from Claude Code itself.
+ * Variables that would make a child believe it runs inside another terminal or tool. They leak in
+ * when the dev build is started from a terminal. Agent-specific markers are scrubbed by adapters.
  */
 const NESTING_MARKERS = [
-  'CLAUDECODE',
-  'CLAUDE_CODE_ENTRYPOINT',
-  'CLAUDE_CODE_SSE_PORT',
   'ELECTRON_RUN_AS_NODE',
   'ELECTRON_NO_ATTACH_CONSOLE',
   'TERM_PROGRAM',

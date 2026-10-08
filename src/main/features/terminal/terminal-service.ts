@@ -176,6 +176,7 @@ export class TerminalService {
 
   private async childEnv(): Promise<Record<string, string>> {
     const env = sanitizeChildEnv(await this.deps.baseEnv())
+    this.deps.adapter.scrubInheritedEnv(env)
     setEnv(env, 'TERM', 'xterm-256color')
     setEnv(env, 'COLORTERM', 'truecolor')
     // Finder-launched apps often lack a UTF-8 locale; Korean text would break without one.
