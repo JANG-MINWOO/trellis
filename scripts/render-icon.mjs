@@ -9,13 +9,21 @@ const svg = readFileSync(path.join(dir, 'icon.svg'), 'utf8')
 
 app.disableHardwareAcceleration()
 app.whenReady().then(async () => {
-  const win = new BrowserWindow({ width: 1024, height: 1024, show: false, frame: false, transparent: true, webPreferences: { offscreen: true } })
+  const win = new BrowserWindow({
+    width: 1024,
+    height: 1024,
+    show: false,
+    frame: false,
+    transparent: true,
+    webPreferences: { offscreen: true },
+  })
   win.webContents.setZoomFactor(1)
   const html = `<html><body style="margin:0;background:transparent">${svg}</body></html>`
   await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
   await new Promise((r) => setTimeout(r, 300))
   const image = await win.webContents.capturePage({ x: 0, y: 0, width: 1024, height: 1024 })
-  const resized = image.getSize().width === 1024 ? image : image.resize({ width: 1024, height: 1024 })
+  const resized =
+    image.getSize().width === 1024 ? image : image.resize({ width: 1024, height: 1024 })
   writeFileSync(path.join(dir, 'icon.png'), resized.toPNG())
   console.log('build/icon.png', resized.getSize())
   app.quit()
