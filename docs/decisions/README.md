@@ -42,3 +42,5 @@
 | [0011](0011-stable-build-develops-dev-build.md) | 안정 빌드로 개발 빌드를 고친다 | 채택 |
 | [0012](0012-three-layer-intent-single-source.md) | 의도 레이어 3층, 원본 하나 | 채택 |
 | [0013](0013-claude-runs-as-pty-process.md) | Claude 탭은 셸 없이 claude를 직접 실행 | 채택 |
+| [0014](0014-changes-from-git-snapshots.md) | 변경은 git 임시 인덱스 스냅샷으로 계산한다 | 채택 |
+| [0015](0015-scrub-parent-agent-env.md) | 상위 에이전트 세션의 환경 변수는 지운다 | 채택 |

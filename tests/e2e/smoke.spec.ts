@@ -33,13 +33,16 @@ test('onboarding → claude session → timeline and changes', async () => {
   test.skip(process.platform === 'win32', 'fake CLI is a shebang script')
   const project = makeProject()
   const userData = mkdtempSync(path.join(os.tmpdir(), 'trellis-e2e-data-'))
+  // TRELLIS_E2E_EXECUTABLE runs the same test against a packaged app instead of out/.
+  const packaged = process.env.TRELLIS_E2E_EXECUTABLE
   const app = await electron.launch({
-    args: [root],
+    ...(packaged ? { executablePath: packaged, args: [] } : { args: [root] }),
     env: {
       ...process.env,
       TRELLIS_E2E: '1',
       TRELLIS_USER_DATA: userData,
-      TRELLIS_SKIP_SHELL_ENV: '1',
+      // Packaged runs exercise the real login-shell PATH resolution.
+      ...(packaged ? {} : { TRELLIS_SKIP_SHELL_ENV: '1' }),
       TRELLIS_E2E_PICK_FOLDER: project,
       CLAUDE_CONFIG_DIR: path.join(userData, 'claude-config'),
     },

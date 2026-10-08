@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16231c"/>
+      <stop offset="1" stop-color="#0b120e"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7ef0b8"/>
+      <stop offset="1" stop-color="#2fbf7d"/>
+    </linearGradient>
+    <clipPath id="tile"><rect x="100" y="100" width="824" height="824" rx="186"/></clipPath>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <g clip-path="url(#tile)" stroke="#2c4a39" stroke-width="16" stroke-linecap="round">
+    <path d="M100 420 L604 924 M100 220 L804 924 M180 100 L1004 924 M380 100 L924 644 M580 100 L924 444"/>
+    <path d="M924 420 L420 924 M924 220 L220 924 M844 100 L20 924 M644 100 L100 644 M444 100 L100 444"/>
+  </g>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="4"/>
+  <path d="M512 800 C512 690 505 600 520 500" fill="none" stroke="#3ecf8e" stroke-width="34" stroke-linecap="round"/>
+  <path d="M520 520 C430 520 340 470 318 360 C418 352 508 410 520 520 Z" fill="url(#leaf)"/>
+  <path d="M520 470 C540 360 620 280 740 268 C744 392 650 470 520 470 Z" fill="url(#leaf)"/>
+  <path d="M520 520 C470 470 410 430 330 372" fill="none" stroke="#0b120e" stroke-opacity="0.35" stroke-width="8" stroke-linecap="round"/>
+  <path d="M520 470 C580 400 650 330 730 280" fill="none" stroke="#0b120e" stroke-opacity="0.35" stroke-width="8" stroke-linecap="round"/>
+</svg>

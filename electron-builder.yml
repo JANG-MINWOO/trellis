@@ -1,0 +1,39 @@
+# Packaging for macOS and Windows (ADR-0006). Unsigned for now; signing is decided in M5.
+appId: dev.jangminwoo.trellis
+productName: Trellis
+copyright: Copyright © 2026 JANG-MINWOO
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+  - '!node_modules/node-pty/{src,deps,third_party,scripts,typings,binding.gyp}'
+  - '!node_modules/node-pty/build/{Debug,obj.target,deps}'
+asarUnpack:
+  - node_modules/node-pty/**
+npmRebuild: false
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+  identity: null
+  hardenedRuntime: false
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+dmg:
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-Setup-${version}-win-${arch}.${ext}
+  shortcutName: Trellis
