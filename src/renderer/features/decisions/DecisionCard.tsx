@@ -130,11 +130,7 @@ export function DecisionCard({
         rows={2}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        placeholder={
-          decision.whyGuess
-            ? t('decisions.reasonPlaceholderGuess', { guess: decision.whyGuess })
-            : t('decisions.reasonPlaceholder')
-        }
+        placeholder={t('decisions.reasonPlaceholder')}
         className="mt-2.5 text-xs"
         data-testid="decision-reason"
       />
