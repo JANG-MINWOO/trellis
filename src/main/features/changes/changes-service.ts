@@ -199,7 +199,14 @@ export class ChangesService {
     const tmpIndex = path.join(os.tmpdir(), `trellis-index-${randomUUID()}`)
     try {
       // Seeding from the real index keeps git's stat cache, so unchanged files are not re-hashed.
-      if (existsSync(realIndex)) await fs.copyFile(realIndex, tmpIndex)
+      if (existsSync(realIndex)) {
+        await fs.copyFile(realIndex, tmpIndex)
+        // Keep the index's own mtime (rounded down to the second). git re-checks entries written
+        // in the same second as the index ("racy git"); a fresh copy time would switch that off
+        // and miss same-size edits made right after a commit.
+        const { atime, mtime } = await fs.stat(realIndex)
+        await fs.utimes(tmpIndex, atime, Math.floor(mtime.getTime() / 1000))
+      }
       const env = { GIT_INDEX_FILE: tmpIndex }
       const scope = info.prefix || '.'
       const excludes = await this.largeUntracked(info, scope)
