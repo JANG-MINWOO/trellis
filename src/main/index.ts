@@ -19,6 +19,7 @@ import { ProjectWatcher } from './features/watcher'
 import { registerIpc } from './ipc'
 import { buildAppMenu } from './menu'
 import { resolveShellEnv } from './platform/shell-env'
+import { stopAllChildren } from './platform/children'
 import { configureUserData } from './platform/user-data'
 import { newId } from './lib/ids'
 import { findExecutable } from './platform/which'
@@ -236,6 +237,7 @@ async function bootstrap(): Promise<void> {
   })
   app.on('will-quit', () => {
     ptys.disposeAll()
+    stopAllChildren()
     watcher.stop()
     void bridge.stop()
   })

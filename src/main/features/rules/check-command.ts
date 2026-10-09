@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { track } from '../../platform/children'
 import { killTree, ownProcessGroup } from '../../platform/process'
 import { shellCommand } from '../../platform/shells'
 
@@ -17,14 +18,16 @@ export function runCheckCommand(
   return new Promise((resolve) => {
     let output = ''
     let timedOut = false
-    const child = spawn(file, args, {
-      cwd,
-      env: { ...env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' },
-      windowsHide: true,
-      windowsVerbatimArguments: verbatim,
-      detached: ownProcessGroup(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    const child = track(
+      spawn(file, args, {
+        cwd,
+        env: { ...env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' },
+        windowsHide: true,
+        windowsVerbatimArguments: verbatim,
+        detached: ownProcessGroup(),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
+    )
     const keep = (chunk: Buffer): void => {
       output = (output + chunk.toString('utf8')).slice(-MAX_OUTPUT * 2)
     }

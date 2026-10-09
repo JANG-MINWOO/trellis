@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import os from 'node:os'
+import { track } from '../../platform/children'
 import { getEnv } from '../../platform/env'
 import { needsCmdWrapper } from '../../platform/which'
 
@@ -25,7 +26,7 @@ export function runHeadless(
     let stdout = ''
     let stderr = ''
     let timedOut = false
-    const child = spawn(file, argv, { cwd: os.tmpdir(), env, windowsHide: true })
+    const child = track(spawn(file, argv, { cwd: os.tmpdir(), env, windowsHide: true }))
     const timer = setTimeout(() => {
       timedOut = true
       child.kill()
