@@ -9,7 +9,7 @@
   "private": true,
   "homepage": "https://github.com/JANG-MINWOO/trellis",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "electron-vite dev --watch",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit --composite false -p tsconfig.node.json && tsc --noEmit --composite false -p tsconfig.web.json",
@@ -24,7 +24,8 @@
     "e2e": "npm run build && playwright test",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
     "dist:win": "npm run build && electron-builder --win --publish never",
-    "postinstall": "node scripts/fix-node-pty.mjs && electron-builder install-app-deps"
+    "postinstall": "node scripts/fix-node-pty.mjs && electron-builder install-app-deps",
+    "install:local": "node scripts/install-local.mjs"
   },
   "dependencies": {
     "node-pty": "1.1.0"
