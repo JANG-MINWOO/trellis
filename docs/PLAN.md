@@ -78,7 +78,7 @@
 - **Electron + React + TypeScript** (electron-vite 빌드, electron-builder 패키징). 터미널은 xterm.js + node-pty. (ADR-0002)
 - 프로세스 구성: `main`(Node — 파일·git·pty·이벤트 서버) / `preload`(타입이 정해진 최소 API만 노출) / `renderer`(React UI). `shared`는 양쪽이 쓰는 타입과 순수 함수.
 - **이벤트 브리지** (ADR-0003): Trellis가 claude를 실행할 때 `--settings <생성한 파일>`로 **HTTP 훅**을 붙인다. 훅은 `127.0.0.1:<임의 포트>`의 Trellis 서버로 이벤트 JSON을 POST한다. 토큰과 프로젝트 ID는 헤더로(`allowedEnvVars`), 서버가 꺼져 있어도 Claude는 멈추지 않는다(HTTP 훅 실패는 non-blocking). 대상 저장소의 `.claude` 설정은 건드리지 않고, 기존 훅과 병합되어 함께 돈다.
-- **진실은 git**: 변경 묶음은 훅 이벤트가 아니라 git에서 계산한다(Bash로 만든 변경도 잡힌다). 훅 이벤트는 "어느 턴이 어느 파일을 바꿨나"의 귀속에만 쓴다. 세션 기준점은 `git stash create`(작업 트리를 건드리지 않는 스냅샷 커밋)로 잡는다.
+- **진실은 git**: 변경 묶음은 훅 이벤트가 아니라 git에서 계산한다(Bash로 만든 변경도 잡힌다). 훅 이벤트는 "어느 턴이 어느 파일을 바꿨나"의 귀속에만 쓴다. 세션 기준점은 Claude를 띄우기 직전에 임시 인덱스(`GIT_INDEX_FILE`) + `git write-tree`로 작업 트리 전체를 tree 객체로 찍어 잡는다(작업 트리·실제 인덱스·refs를 건드리지 않음, 추적 안 된 파일 포함). (ADR-0014)
 - **AI 분석**(M2~): `claude -p --output-format json --json-schema … --tools "" --no-session-persistence`로 호출한다. 별도 API 키 없이 로그인된 구독을 쓴다. (ADR-0004)
 - **데이터 위치**: 앱 데이터 폴더(userData)에 설정·프로젝트 목록·이벤트 원장(`events.jsonl`, append-only)·의도. 대상 저장소에는 사람이 승인한 문서만. 개발 빌드는 별도 데이터 폴더를 쓴다(안정 빌드와 섞이지 않게).
 - **macOS GUI 앱의 PATH 문제**: Finder로 실행한 앱은 셸 PATH를 못 받는다 → 시작 시 로그인 셸 환경을 읽어 claude·git·Claude의 Bash 도구가 사용자 PATH로 돌게 한다.
@@ -130,7 +130,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] 건강 패널(기본 지표): 파일 수, 큰 파일 상위, 300줄 초과 파일 수, 밀집 폴더
 - [x] 온보딩: 언어 선택, claude·git 설치 확인, 첫 프로젝트 추가
 - [x] 제품 수준 UI: 레이아웃 B, 리사이즈·접기, 상태 바, 빈 상태, 다크/라이트, 알림, 앱 아이콘
-- [x] 테스트: 순수 로직 단위 테스트 41개 + Electron 스모크 테스트(가짜 claude로 브리지 전 구간, 패키지 앱으로도 통과)
+- [x] 테스트: 단위 테스트 45개(실제 git 저장소로 변경 계산을 확인하는 통합 테스트 포함) + Electron 스모크 테스트(가짜 claude로 브리지 전 구간, 패키지 앱으로도 통과)
 - [x] 실제 claude로 브리지 동작 확인 (`TRELLIS_REAL_CLAUDE=1 npx playwright test real-claude`)
 - [x] macOS 패키지 빌드 실행 확인, CI에서 macOS·Windows 설치 파일 생성
 
@@ -289,9 +289,10 @@ trellis/
 │   ├── shared/          ← main·renderer 공용 타입과 순수 함수
 │   ├── main/            ← Electron 메인 (features/*, platform/*)
 │   ├── preload/
-│   └── renderer/        ← React UI (app/, features/*, components/ui/, i18n/)
+│   └── renderer/        ← React UI (app/, features/*, components/ui/, lib/, state/, styles/, i18n/)
+├── build/               ← 앱 아이콘 (icon.svg → icon.png)
 ├── scripts/             ← Node 스크립트 (크로스 플랫폼)
-├── tests/               ← e2e
+├── tests/e2e/           ← Electron e2e (스모크, 실제 claude, 둘러보기)
 └── .github/workflows/
 ```
 
