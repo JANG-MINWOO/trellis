@@ -1,7 +1,7 @@
 {
   "name": "trellis",
   "productName": "Trellis",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Keep the intent of your project understood while you work with AI agents.",
   "main": "./out/main/index.js",
   "author": "JANG-MINWOO",
