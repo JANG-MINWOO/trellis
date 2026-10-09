@@ -10,42 +10,14 @@ import type {
   EditorApp,
   PermissionMode,
 } from '@shared/types'
-import { Button, Dialog, FieldRow, Input, Segmented, Select, Switch } from '../../components/ui'
+import { Dialog, FieldRow, Segmented, Select, Switch } from '../../components/ui'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { shortenHome } from '../../lib/format'
 import { useActiveProject, useStore, type SettingsSection } from '../../state/store'
 import { PERMISSION_MODES } from '../terminal'
-
-/** Text input that saves on blur or Enter, not on every keystroke. */
-function CommitInput({
-  value,
-  onCommit,
-  placeholder,
-  type = 'text',
-}: {
-  value: string
-  onCommit: (v: string) => void
-  placeholder?: string
-  type?: string
-}) {
-  const [draft, setDraft] = useState(value)
-  const [lastValue, setLastValue] = useState(value)
-  if (value !== lastValue) {
-    setLastValue(value)
-    setDraft(value)
-  }
-  return (
-    <Input
-      type={type}
-      value={draft}
-      placeholder={placeholder}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => draft !== value && onCommit(draft)}
-      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-    />
-  )
-}
+import { CommitInput } from './CommitInput'
+import { ProjectSettings } from './ProjectSettings'
 
 export function SettingsDialog() {
   const { t } = useTranslation()
@@ -56,7 +28,6 @@ export function SettingsDialog() {
   const update = useStore((s) => s.updateSettings)
   const close = useStore((s) => s.closeSettings)
   const openSettings = useStore((s) => s.openSettings)
-  const refreshProjects = useStore((s) => s.refreshProjects)
   const project = useActiveProject()
   const [env, setEnv] = useState<EnvironmentStatus | null>(null)
   const [editors, setEditors] = useState<EditorApp[] | null>(null)
@@ -84,12 +55,6 @@ export function SettingsDialog() {
       hidden: !project,
     },
   ]
-
-  const updateProject = async (patch: Parameters<typeof api.projects.update>[1]): Promise<void> => {
-    if (!project) return
-    await api.projects.update(project.id, patch)
-    await refreshProjects()
-  }
 
   return (
     <Dialog
@@ -334,54 +299,7 @@ export function SettingsDialog() {
             </>
           )}
 
-          {section === 'project' && project && (
-            <>
-              <FieldRow label={t('settings.projectName')}>
-                <CommitInput
-                  value={project.name}
-                  onCommit={(name) => void updateProject({ name })}
-                />
-              </FieldRow>
-              <FieldRow label={t('settings.projectPath')}>
-                <div className="flex items-center gap-2">
-                  <code className="min-w-0 flex-1 truncate rounded-md bg-surface-2 px-2.5 py-1.5 text-xs text-fg-muted">
-                    {project.path}
-                  </code>
-                  <Button size="sm" onClick={() => void api.projects.reveal(project.id)}>
-                    {t(appInfo?.platform === 'darwin' ? 'projects.revealMac' : 'projects.reveal')}
-                  </Button>
-                </div>
-              </FieldRow>
-              <FieldRow label={t('settings.decisionsDir')} hint={t('settings.decisionsDirHint')}>
-                <CommitInput
-                  value={project.decisionsDir}
-                  placeholder="docs/decisions"
-                  onCommit={(decisionsDir) => void updateProject({ decisionsDir })}
-                />
-              </FieldRow>
-              <FieldRow
-                label={t('settings.recordLanguage')}
-                hint={t('settings.recordLanguageHint')}
-                inline
-              >
-                <div className="w-44">
-                  <Select
-                    value={project.recordLanguage ?? 'app'}
-                    onChange={(e) =>
-                      void updateProject({
-                        recordLanguage:
-                          e.target.value === 'app' ? null : (e.target.value as Language),
-                      })
-                    }
-                  >
-                    <option value="app">{t('settings.followApp')}</option>
-                    <option value="ko">한국어</option>
-                    <option value="en">English</option>
-                  </Select>
-                </div>
-              </FieldRow>
-            </>
-          )}
+          {section === 'project' && project && <ProjectSettings project={project} />}
         </div>
       </div>
     </Dialog>
