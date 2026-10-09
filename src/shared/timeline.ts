@@ -1,6 +1,17 @@
 // Derives turns and agent state from the event ledger. Nothing here is stored (principle: no
 // derived values next to the source).
-import type { ChangeEntry, EventOf, ToolUse, TrellisEvent } from './types'
+import { areaOf } from './areas'
+import type {
+  AnalysisRun,
+  BehaviorCandidate,
+  ChangeEntry,
+  DecisionCandidate,
+  EventOf,
+  IntentData,
+  RulesCheck,
+  ToolUse,
+  TrellisEvent,
+} from './types'
 
 export type TurnStatus = 'running' | 'waiting' | 'done' | 'interrupted'
 
@@ -29,6 +40,13 @@ export interface TurnItem {
    */
   changes: ChangeEntry[] | null
   changesTruncated: boolean
+  /** The intent in force when the prompt was sent (for prediction vs. reality). */
+  intent: IntentData | null
+  decisions: DecisionCandidate[]
+  behaviors: BehaviorCandidate[]
+  analysis: AnalysisRun | null
+  /** Last structure check of the turn (a blocked check is followed by a final one). */
+  rules: RulesCheck | null
   lastMessage: string | null
   waitingMessage: string | null
 }
@@ -67,6 +85,7 @@ function byTime(a: TrellisEvent, b: TrellisEvent): number {
 export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
   const items: TimelineItem[] = []
   const turnsByPrompt = new Map<string, TurnItem>()
+  let intent: IntentData | null = null
   const openTurnBySession = new Map<string, TurnItem>()
 
   const sessionKey = (e: TrellisEvent): string => e.sessionId ?? `terminal:${e.terminalId ?? '?'}`
@@ -111,8 +130,21 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
         })
         break
       case 'intent.set':
+        intent = e.data
         items.push({ type: 'intent', key: e.id, ts: e.ts, text: e.data.text })
         break
+      case 'decision.candidate':
+      case 'behavior.candidate':
+      case 'analysis.run':
+      case 'rules.check': {
+        const turn = e.promptId ? turnsByPrompt.get(e.promptId) : undefined
+        if (!turn) break
+        if (e.kind === 'decision.candidate') turn.decisions.push(e.data)
+        else if (e.kind === 'behavior.candidate') turn.behaviors.push(e.data)
+        else if (e.kind === 'analysis.run') turn.analysis = e.data
+        else turn.rules = e.data
+        break
+      }
       case 'prompt.submit': {
         // A new prompt while the previous turn is still open means the user interrupted it.
         closeOpenTurn(sessionKey(e), 'interrupted', e.ts)
@@ -129,6 +161,11 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
           files: [],
           changes: null,
           changesTruncated: false,
+          intent,
+          decisions: [],
+          behaviors: [],
+          analysis: null,
+          rules: null,
           lastMessage: null,
           waitingMessage: null,
         }
@@ -225,4 +262,25 @@ export function currentIntent(events: readonly TrellisEvent[]): EventOf<'intent.
     if (e.kind === 'intent.set' && (!latest || e.ts >= latest.ts)) latest = e
   }
   return latest
+}
+
+export interface PredictionCheck {
+  /** Predicted and changed. */
+  hit: string[]
+  /** Changed without being predicted — worth a second look. */
+  unpredicted: string[]
+  /** Predicted but untouched. */
+  untouched: string[]
+}
+
+/** Compares the areas the human expected to change with what git saw change (F9). */
+export function comparePrediction(turn: TurnItem): PredictionCheck | null {
+  const predicted = turn.intent?.predictedAreas ?? []
+  if (predicted.length === 0 || !turn.changes) return null
+  const changed = [...new Set(turn.changes.map((c) => areaOf(c.path)))]
+  return {
+    hit: changed.filter((a) => predicted.includes(a)),
+    unpredicted: changed.filter((a) => !predicted.includes(a)),
+    untouched: predicted.filter((a) => !changed.includes(a)),
+  }
 }

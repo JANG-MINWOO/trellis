@@ -26,6 +26,7 @@ const api: TrellisApi = {
     markOpened: (id) => invoke(Invoke.projectsOpened, id),
     reveal: (id, rel) => invoke(Invoke.projectsReveal, id, rel),
     watch: (id) => invoke(Invoke.watchProject, id),
+    areas: (id) => invoke(Invoke.projectAreas, id),
     onFsChanged: (cb) => subscribe(Push.projectFsChanged, cb),
   },
   files: {
@@ -54,13 +55,22 @@ const api: TrellisApi = {
     list: (id, limit) => invoke(Invoke.eventsList, id, limit),
     onEvent: (cb) => subscribe(Push.event, cb),
   },
-  intent: { save: (id, text) => invoke(Invoke.intentSave, id, text) },
+  intent: { save: (id, intent) => invoke(Invoke.intentSave, id, intent) },
   changes: {
     get: (id, baseline) => invoke(Invoke.changesGet, id, baseline),
     resetBaseline: (id) => invoke(Invoke.changesResetBaseline, id),
     initRepo: (id) => invoke(Invoke.gitInit, id),
   },
-  decisions: { list: (id) => invoke(Invoke.decisionsList, id) },
+  decisions: {
+    list: (id) => invoke(Invoke.decisionsList, id),
+    resolve: (id, candidateId, answer) => invoke(Invoke.decisionsResolve, id, candidateId, answer),
+  },
+  specs: {
+    list: (id) => invoke(Invoke.specsList, id),
+    resolve: (id, candidateId, answer) => invoke(Invoke.behaviorsResolve, id, candidateId, answer),
+    fromIntent: (id, lines, area) => invoke(Invoke.behaviorsFromIntent, id, lines, area),
+  },
+  analysis: { onStatus: (cb) => subscribe(Push.analysisStatus, cb) },
   health: { get: (id) => invoke(Invoke.healthGet, id) },
   menu: { onCommand: (cb) => subscribe(Push.menuCommand, cb) },
 }

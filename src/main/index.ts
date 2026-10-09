@@ -4,6 +4,7 @@ import { Push } from '@shared/ipc'
 import { translate } from '@shared/i18n'
 import type { AppContext } from './context'
 import { claudeCodeAdapter } from './features/agents'
+import { TurnAnalyzer } from './features/analysis'
 import { BridgeServer } from './features/bridge'
 import { ChangesService, Git } from './features/changes'
 import { EventStore } from './features/events'
@@ -11,6 +12,7 @@ import { notifyForEvent } from './features/notify'
 import { ProjectRegistry } from './features/projects'
 import { SettingsStore } from './features/settings'
 import { PtyManager, TerminalService } from './features/terminal'
+import { TurnPipeline } from './features/turns'
 import { ProjectWatcher } from './features/watcher'
 import { registerIpc } from './ipc'
 import { buildAppMenu } from './menu'
@@ -55,6 +57,9 @@ async function bootstrap(): Promise<void> {
   // terminals is created below; the bridge only needs it once payloads arrive.
   let terminals: TerminalService | null = null
 
+  // Created below; the bridge only needs them once payloads arrive.
+  let pipeline: TurnPipeline | null = null
+
   const bridge = new BridgeServer(async ({ raw, projectId, terminalId, receivedAt }) => {
     const project = registry.get(projectId)
     if (!project) return
@@ -67,32 +72,15 @@ async function bootstrap(): Promise<void> {
     if (!event) return
     terminals?.noteAgentEvent(terminalId, event.sessionId)
     // Before the prompt hook is answered (Claude waits for it), so the snapshot predates the turn.
-    if (event.kind === 'prompt.submit' && event.promptId) {
-      await changes.beginTurn(project.id, project.path, event.promptId).catch(() => undefined)
-    }
+    if (event.kind === 'prompt.submit' && event.promptId)
+      await pipeline?.onPrompt(project, event.promptId)
     await events.append(event)
     notifyForEvent(event, project.name, settings.get(), mainWindow)
-    if (event.kind === 'turn.stop' && event.promptId) {
-      const promptId = event.promptId
-      void changes
-        .endTurn(project.id, project.path, promptId)
-        .then((result) =>
-          result
-            ? events.append({
-                id: newId(),
-                ts: Date.now(),
-                projectId: project.id,
-                agent: event.agent,
-                sessionId: event.sessionId,
-                promptId,
-                terminalId: event.terminalId,
-                kind: 'turn.changes',
-                data: result,
-              })
-            : undefined,
-        )
-        .catch(() => undefined)
+    if (event.kind === 'turn.stop') {
+      const active = Boolean((raw as { stop_hook_active?: unknown }).stop_hook_active)
+      return pipeline?.onStop(project, event, active)
     }
+    return undefined
   })
   await bridge.start()
   const bridgeConfigFile = await adapter.prepareBridge(
@@ -123,6 +111,17 @@ async function bootstrap(): Promise<void> {
         .catch(() => undefined),
   })
   terminals = terminalService
+
+  const analyzer = new TurnAnalyzer({
+    adapter,
+    events,
+    changes,
+    settings: () => settings.get(),
+    git,
+    agent: () => terminalService.agentLaunch(),
+    onStatus: (projectId, running) => send(Push.analysisStatus, { projectId, running }),
+  })
+  pipeline = new TurnPipeline({ events, changes, analyzer, guard: null })
 
   const ctx: AppContext = {
     dataDir,

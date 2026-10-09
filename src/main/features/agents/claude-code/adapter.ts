@@ -100,6 +100,48 @@ export const claudeCodeAdapter: AgentAdapter = {
 
   normalize: normalizeClaudeHook,
 
+  // --restricted ignores user/project/local settings (their hooks would otherwise fire for our
+  // analysis prompt) while keeping the subscription login; --bare would drop OAuth entirely.
+  headlessArgs({ schema, model }) {
+    return [
+      '-p',
+      '--restricted',
+      '--strict-mcp-config',
+      '--tools',
+      '',
+      '--no-session-persistence',
+      '--output-format',
+      'json',
+      '--json-schema',
+      JSON.stringify(schema),
+      '--model',
+      model,
+    ]
+  },
+
+  parseHeadless(stdout) {
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(stdout) as Record<string, unknown>
+    } catch {
+      return { ok: false, message: stdout.trim().slice(0, 300) || 'empty output' }
+    }
+    if (parsed.is_error || parsed.subtype !== 'success') {
+      return {
+        ok: false,
+        message: String(parsed.result ?? parsed.subtype ?? 'error').slice(0, 300),
+      }
+    }
+    if (parsed.structured_output && typeof parsed.structured_output === 'object') {
+      return { ok: true, data: parsed.structured_output }
+    }
+    try {
+      return { ok: true, data: JSON.parse(String(parsed.result)) }
+    } catch {
+      return { ok: false, message: 'no structured output' }
+    }
+  },
+
   // Documented shortcuts: Ctrl+V on macOS/Linux, Alt+V on Windows (Esc-prefixed in a terminal).
   imagePasteKeys(platform) {
     return platform === 'win32' ? '\x1bv' : '\x16'

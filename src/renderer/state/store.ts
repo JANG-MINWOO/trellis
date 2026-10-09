@@ -18,7 +18,7 @@ import type {
 import i18n, { setLanguage } from '../i18n'
 import { api } from '../lib/api'
 
-export type RightTab = 'timeline' | 'changes' | 'decisions' | 'health'
+export type RightTab = 'timeline' | 'changes' | 'decisions' | 'specs' | 'health'
 export type SettingsSection = 'general' | 'claude' | 'editor' | 'terminal' | 'project'
 
 export interface Toast {
@@ -52,6 +52,8 @@ interface State {
   startErrors: Record<string, StartError | undefined>
   changes: Record<string, ChangeReport | undefined>
   changesLoading: Record<string, boolean>
+  /** A finished turn is being analyzed for decisions and behavior changes. */
+  analyzing: Record<string, boolean>
   baseline: Baseline
   fsTick: Record<string, number>
   rightTab: RightTab
@@ -106,6 +108,7 @@ export const useStore = create<State & Actions>()((set, get) => ({
   startErrors: {},
   changes: {},
   changesLoading: {},
+  analyzing: {},
   baseline: 'session',
   fsTick: {},
   rightTab: 'timeline',
@@ -168,6 +171,9 @@ export const useStore = create<State & Actions>()((set, get) => ({
           get().refreshChanges(event.projectId)
         }
       }),
+      api.analysis.onStatus(({ projectId, running }) =>
+        set((s) => ({ analyzing: { ...s.analyzing, [projectId]: running } })),
+      ),
       api.projects.onFsChanged((projectId) => {
         set((s) => ({ fsTick: { ...s.fsTick, [projectId]: (s.fsTick[projectId] ?? 0) + 1 } }))
         get().refreshChanges(projectId)

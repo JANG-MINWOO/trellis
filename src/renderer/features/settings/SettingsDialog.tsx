@@ -199,6 +199,15 @@ export function SettingsDialog() {
                   ))}
                 </Select>
               </FieldRow>
+              <FieldRow label={t('settings.analysisModel')} hint={t('settings.analysisModelHint')}>
+                <CommitInput
+                  value={settings.analysis.model}
+                  placeholder="sonnet"
+                  onCommit={(model) =>
+                    void update({ analysis: { model: model.trim() || 'sonnet' } })
+                  }
+                />
+              </FieldRow>
               <FieldRow
                 label={t('settings.onProjectOpen')}
                 hint={t('settings.onProjectOpenHint')}

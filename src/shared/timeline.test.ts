@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildTimeline,
+  comparePrediction,
   currentIntent,
   deriveAgentState,
   turnFiles,
@@ -145,6 +146,87 @@ describe('buildTimeline', () => {
       { path: 'a.ts', status: 'M' },
       { path: 'log.md', status: 'A' },
     ])
+  })
+
+  it('attaches analysis results and compares the prediction', () => {
+    const items = buildTimeline([
+      ev({
+        kind: 'intent.set',
+        ts: 1,
+        sessionId: null,
+        promptId: null,
+        data: { text: 't', predictedAreas: ['src/auth', 'docs'] },
+      }),
+      ev({ kind: 'prompt.submit', ts: 2, sessionId: 's', promptId: 'p', data: { prompt: 'x' } }),
+      ev({ kind: 'turn.stop', ts: 3, sessionId: 's', promptId: 'p', data: { lastMessage: '' } }),
+      ev({
+        kind: 'turn.changes',
+        ts: 4,
+        sessionId: 's',
+        promptId: 'p',
+        data: {
+          truncated: false,
+          files: [
+            {
+              path: 'src/auth/lock.ts',
+              oldPath: null,
+              status: 'M',
+              additions: 1,
+              deletions: 0,
+              binary: false,
+            },
+            {
+              path: 'src/db/schema.ts',
+              oldPath: null,
+              status: 'M',
+              additions: 1,
+              deletions: 0,
+              binary: false,
+            },
+          ],
+        },
+      }),
+      ev({
+        kind: 'decision.candidate',
+        ts: 5,
+        sessionId: 's',
+        promptId: 'p',
+        data: {
+          candidateId: 'c1',
+          source: 'analysis',
+          title: 'Lock accounts',
+          what: '',
+          whyGuess: '',
+          alternatives: '',
+          consequences: '',
+          kind: 'security',
+          risk: 'high',
+          files: [],
+        },
+      }),
+      ev({
+        kind: 'analysis.run',
+        ts: 6,
+        sessionId: 's',
+        promptId: 'p',
+        data: {
+          status: 'ok',
+          durationMs: 10,
+          model: 'sonnet',
+          decisions: 1,
+          behaviors: 0,
+          message: null,
+        },
+      }),
+    ])
+    const turn = items.find((i) => i.type === 'turn') as TurnItem
+    expect(turn.decisions.map((d) => d.title)).toEqual(['Lock accounts'])
+    expect(turn.analysis?.status).toBe('ok')
+    expect(comparePrediction(turn)).toEqual({
+      hit: ['src/auth'],
+      unpredicted: ['src/db'],
+      untouched: ['docs'],
+    })
   })
 
   it('sorts events by time before building', () => {

@@ -1,6 +1,6 @@
 import { existsSync, promises as fs } from 'node:fs'
 import path from 'node:path'
-import { DEFAULT_DECISIONS_DIR } from '@shared/defaults'
+import { DEFAULT_DECISIONS_DIR, DEFAULT_RISK_AREAS, DEFAULT_SPECS_DIR } from '@shared/defaults'
 import type { Project, ProjectPatch, ProjectView } from '@shared/types'
 import { stableId } from '../../lib/ids'
 import { readJson, writeJsonAtomic } from '../../lib/json-file'
@@ -13,7 +13,7 @@ export class ProjectRegistry {
 
   static async load(file: string): Promise<ProjectRegistry> {
     const raw = await readJson<unknown>(file, [])
-    const projects = Array.isArray(raw) ? raw.filter(isProject) : []
+    const projects = Array.isArray(raw) ? raw.filter(isProject).map(withDefaults) : []
     return new ProjectRegistry(file, projects)
   }
 
@@ -43,6 +43,10 @@ export class ProjectRegistry {
       lastOpenedAt: null,
       recordLanguage: null,
       decisionsDir: DEFAULT_DECISIONS_DIR,
+      specsDir: DEFAULT_SPECS_DIR,
+      analysisEnabled: true,
+      riskAreas: [...DEFAULT_RISK_AREAS],
+      guard: { enforceRules: false, checkCommand: '' },
     }
     this.projects.push(project)
     await this.save()
@@ -59,8 +63,12 @@ export class ProjectRegistry {
     if (!project) throw new Error(`Unknown project: ${id}`)
     if (patch.name !== undefined && patch.name.trim()) project.name = patch.name.trim()
     if (patch.recordLanguage !== undefined) project.recordLanguage = patch.recordLanguage
-    if (patch.decisionsDir !== undefined)
-      project.decisionsDir = patch.decisionsDir.trim().replace(/\\/g, '/')
+    if (patch.decisionsDir !== undefined) project.decisionsDir = cleanDir(patch.decisionsDir)
+    if (patch.specsDir !== undefined) project.specsDir = cleanDir(patch.specsDir)
+    if (patch.analysisEnabled !== undefined) project.analysisEnabled = patch.analysisEnabled
+    if (patch.riskAreas !== undefined)
+      project.riskAreas = patch.riskAreas.map((g) => g.trim()).filter(Boolean)
+    if (patch.guard !== undefined) project.guard = { ...project.guard, ...patch.guard }
     await this.save()
     return view(project)
   }
@@ -74,6 +82,23 @@ export class ProjectRegistry {
 
   private save(): Promise<void> {
     return writeJsonAtomic(this.file, this.projects)
+  }
+}
+
+const cleanDir = (dir: string): string => dir.trim().replace(/\\/g, '/').replace(/\/+$/, '')
+
+/** Projects saved by older versions lack newer fields. */
+function withDefaults(project: Project): Project {
+  const p = project as Partial<Project> & Project
+  return {
+    ...p,
+    specsDir: typeof p.specsDir === 'string' ? p.specsDir : DEFAULT_SPECS_DIR,
+    analysisEnabled: typeof p.analysisEnabled === 'boolean' ? p.analysisEnabled : true,
+    riskAreas: Array.isArray(p.riskAreas) ? p.riskAreas : [...DEFAULT_RISK_AREAS],
+    guard: {
+      enforceRules: p.guard?.enforceRules ?? false,
+      checkCommand: p.guard?.checkCommand ?? '',
+    },
   }
 }
 

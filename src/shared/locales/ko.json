@@ -120,10 +120,17 @@
     "title": "작업 의도",
     "write": "의도 적기",
     "empty": "이번 작업에서 하려는 것과 하면 안 되는 것을 먼저 적어 두세요. 나중에 '왜 그렇게 했지?'에 답하는 근거가 돼요.",
-    "placeholder": "하려는 것: 로그인을 5번 틀리면 계정을 30분 잠근다\n하면 안 되는 것: 기존 세션 토큰 형식은 바꾸지 않는다\n예상 영향: 인증, 회원",
-    "hint": "AI가 아니라 직접 짧게 쓰는 게 핵심이에요. ⌘/Ctrl+Enter로 저장해요.",
+    "hint": "AI가 아니라 직접 짧게 쓰는 게 핵심이에요. 하면 안 되는 것은 한 줄에 하나씩 쓰면 동작 명세의 불변식으로 옮길 수 있어요.",
     "saveAndPaste": "저장하고 Claude에 붙여넣기",
-    "noClaude": "실행 중인 Claude 세션이 없어서 붙여넣지 못했어요. 의도는 저장됐어요."
+    "noClaude": "실행 중인 Claude 세션이 없어서 붙여넣지 못했어요. 의도는 저장됐어요.",
+    "goal": "하려는 것",
+    "goalPlaceholder": "로그인을 5번 틀리면 계정을 30분 잠근다",
+    "mustNot": "하면 안 되는 것",
+    "mustNotPlaceholder": "기존 세션 토큰 형식은 바꾸지 않는다\n결제 금액 계산은 건드리지 않는다",
+    "predicted": "바뀔 것 같은 곳",
+    "predictedHint": "고르면 작업이 끝난 뒤 실제로 바뀐 곳과 비교해 보여줘요.",
+    "toInvariants": "불변식으로",
+    "invariantsSent": "{{count}}개를 동작 탭에 올렸어요. 확인하고 반영해 주세요."
   },
   "inspector": {
     "noProject": "프로젝트를 열면 의도, 타임라인, 변경, 결정, 구조 건강이 여기에 보여요."
@@ -148,7 +155,17 @@
     "sessionCompact": "대화 압축",
     "sessionEnd": "대화 종료",
     "allTabs": "모든 탭",
-    "closedTab": "닫힌 탭"
+    "closedTab": "닫힌 탭",
+    "decisions_other": "결정 {{count}}",
+    "behaviors_other": "동작 변경 {{count}}",
+    "violations_other": "규칙 위반 {{count}}",
+    "checkFailed": "검사 실패",
+    "sentBack": "되돌려 보냄",
+    "analysisFailed": "분석 실패",
+    "prediction": "예측:",
+    "predictionMatched": "예상한 곳만 바뀌었어요",
+    "unpredicted": "예상 밖 변경 {{areas}}",
+    "untouched": "그대로인 곳 {{areas}}"
   },
   "changes": {
     "title": "변경",
@@ -177,7 +194,42 @@
     "missing": "결정 기록 폴더({{dir}})가 없어요",
     "missingHint": "결정 하나를 짧은 마크다운 파일 하나로 남기는 폴더예요. 다른 위치를 쓰고 있다면 설정에서 바꿀 수 있어요.",
     "configure": "폴더 위치 설정",
-    "upcoming": "다음 버전에서는 작업이 끝날 때 새 결정을 감지해서 이유를 묻고, 답을 여기에 기록해요."
+    "pendingTitle": "확인할 결정",
+    "analyzing": "방금 작업을 살펴보는 중…",
+    "noPending": "Claude가 작업을 마칠 때마다 되돌리기 어렵거나 앞으로의 작업을 좌우할 선택이 있었는지 살펴보고, 있으면 여기에 올려요.",
+    "analysisOff": "이 프로젝트는 작업 분석이 꺼져 있어요. 확인 필요 영역의 변경만 여기에 올라와요. 설정에서 켤 수 있어요.",
+    "risk": {
+      "high": "중요",
+      "medium": "보통",
+      "low": "가벼움"
+    },
+    "kind": {
+      "dependency": "의존성",
+      "architecture": "구조",
+      "data": "데이터",
+      "security": "보안",
+      "api": "API",
+      "behavior": "동작",
+      "infra": "인프라",
+      "other": "기타"
+    },
+    "fromRiskArea": "확인 필요 영역",
+    "fromAnalysis": "작업 분석",
+    "consequences": "그래서 무엇이 달라지나요",
+    "details": "AI의 추측, 대안, 관련 파일",
+    "whyGuess": "AI가 추측한 이유:",
+    "alternatives": "고르지 않은 대안:",
+    "reasonPlaceholder": "왜 이렇게 했나요? 직접 한두 줄로 적어 주세요.",
+    "reasonPlaceholderGuess": "왜 이렇게 했나요? 직접 한두 줄로 적어 주세요. (AI 추측: {{guess}})",
+    "noRecordFiles": "결정 기록 폴더가 꺼져 있어서 Trellis 안에만 남아요.",
+    "useGuess": "AI 추측을 이유로 기록",
+    "dismiss": "결정 아님",
+    "record": "기록하기",
+    "resolveFailed": "처리하지 못했어요: {{message}}",
+    "recorded": "{{path}}에 기록했어요",
+    "recordedLedger": "Trellis 기록에 남겼어요",
+    "usage_other": "이 프로젝트에서 작업 분석 {{count}}회",
+    "usageFailed_other": "실패 {{count}}회"
   },
   "health": {
     "title": "건강",
@@ -246,7 +298,16 @@
     "gpu": "GPU 가속 렌더링",
     "gpuHint": "켜면 출력이 많을 때 더 빠르지만, 일부 환경에서 화면이 갱신되지 않을 수 있어요. 글자가 안 보이면 끄세요.",
     "composer": "Claude 입력창",
-    "composerHint": "Claude 탭 아래에 일반 입력창을 둡니다. 한글을 입력기로 완성한 뒤 한 번에 보내서, 언어를 바꾼 직후 한글이 자모로 쪼개지는 Claude Code 버그를 피합니다."
+    "composerHint": "Claude 탭 아래에 일반 입력창을 둡니다. 한글을 입력기로 완성한 뒤 한 번에 보내서, 언어를 바꾼 직후 한글이 자모로 쪼개지는 Claude Code 버그를 피합니다.",
+    "specsDir": "동작 명세 폴더",
+    "specsDirHint": "기능 영역별 동작과 불변식을 적는 마크다운 폴더예요. 비우면 동작 명세를 쓰지 않아요.",
+    "analysisEnabled": "작업 분석",
+    "analysisEnabledHint": "Claude가 작업을 마칠 때마다 결정과 동작 변경을 찾아 확인을 요청해요. 작업 한 번에 Claude 호출이 한 번 더 들어가요(구독 사용량).",
+    "riskAreas": "확인 필요 영역",
+    "riskAreasHint": "이 패턴에 맞는 파일이 바뀌면 분석과 상관없이 항상 확인을 요청해요. 한 줄에 하나씩.",
+    "riskAreasReset": "기본값으로",
+    "analysisModel": "분석 모델",
+    "analysisModelHint": "작업 분석에 쓰는 모델이에요. sonnet이 정확도와 속도의 균형이 좋고, haiku는 더 빠르고 가벼워요."
   },
   "toast": {
     "editorFailed": "파일을 열지 못했어요. {{message}}",
@@ -304,5 +365,32 @@
     "send": "보내기",
     "hint": "Enter 보내기 · Shift+Enter 줄바꿈 · 이미지는 붙여넣기, 파일은 끌어다 놓기 · 비어 있을 때 Esc는 Claude 중단 · 메뉴 선택은 터미널을 클릭해서",
     "images_other": "이미지 {{count}}개를 Claude 입력칸에 첨부했어요. 보내면 함께 전송돼요."
+  },
+  "specs": {
+    "title": "동작",
+    "pendingTitle": "확인할 동작 변경",
+    "noPending": "Claude의 작업으로 사용자에게 보이는 동작이 바뀌면 여기에 올려요. 반영하면 동작 명세 파일에 들어가요.",
+    "op": {
+      "add": "추가",
+      "change": "변경",
+      "remove": "삭제"
+    },
+    "kind": {
+      "behavior": "동작",
+      "invariant": "불변식"
+    },
+    "fromIntent": "작업 의도에서",
+    "fromAnalysis": "작업 분석",
+    "area": "영역",
+    "dismiss": "아님",
+    "accept": "반영",
+    "resolveFailed": "반영하지 못했어요: {{message}}",
+    "written": "{{path}}에 반영했어요",
+    "disabled": "이 프로젝트는 동작 명세 폴더가 꺼져 있어요",
+    "empty": "아직 동작 명세가 없어요",
+    "emptyHint": "동작 변경을 반영하면 {{dir}} 폴더에 기능 영역별 파일이 생겨요.",
+    "noTest": "테스트 없음",
+    "testHint": "테스트 이름이나 내용에 B-001처럼 항목 번호를 적으면 여기서 연결돼 보여요.",
+    "generalArea": "공통"
   }
 }

@@ -9,6 +9,7 @@ import type {
   TrellisEvent,
 } from '@shared/types'
 import type { AppContext } from './context'
+import { registerIntentIpc } from './ipc-intent'
 import { listDecisionDocs } from './features/decisions'
 import { openInEditor } from './features/editor'
 import { checkEnvironment } from './features/environment'
@@ -22,6 +23,7 @@ import { resolveInsideProject } from './platform/paths'
 const asString = (v: unknown): string => (typeof v === 'string' ? v : '')
 
 export function registerIpc(ctx: AppContext): void {
+  registerIntentIpc(ctx)
   const project = (id: unknown) => {
     const p = ctx.registry.get(asString(id))
     if (!p) throw new Error(`Unknown project: ${String(id)}`)
@@ -123,8 +125,19 @@ export function registerIpc(ctx: AppContext): void {
   handle(Invoke.eventsList, (id, limit) =>
     ctx.events.list(project(id).id, typeof limit === 'number' ? limit : 2000),
   )
-  handle(Invoke.intentSave, async (id, text) => {
+  handle(Invoke.intentSave, async (id, input) => {
     const p = project(id)
+    const raw = (typeof input === 'string' ? { text: input } : (input ?? {})) as Record<
+      string,
+      unknown
+    >
+    const goal = asString(raw.goal).slice(0, 2000)
+    const mustNot = asString(raw.mustNot).slice(0, 2000)
+    const predictedAreas = (Array.isArray(raw.predictedAreas) ? raw.predictedAreas : [])
+      .map(asString)
+      .filter(Boolean)
+      .slice(0, 30)
+    const text = asString(raw.text).slice(0, 4000) || [goal, mustNot].filter(Boolean).join('\n')
     const event: TrellisEvent = {
       id: newId(),
       ts: Date.now(),
@@ -134,7 +147,7 @@ export function registerIpc(ctx: AppContext): void {
       promptId: null,
       terminalId: null,
       kind: 'intent.set',
-      data: { text: asString(text).slice(0, 4000) },
+      data: { text, goal, mustNot, predictedAreas },
     }
     await ctx.events.append(event)
     return event

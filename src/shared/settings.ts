@@ -64,6 +64,7 @@ export function normalizeSettings(raw: unknown): Settings {
       composer: bool(terminal.composer, d.terminal.composer),
     },
     notifications: { enabled: bool(notifications.enabled, d.notifications.enabled) },
+    analysis: { model: str(obj(r.analysis).model, d.analysis.model) || d.analysis.model },
     lastProjectId: typeof r.lastProjectId === 'string' ? r.lastProjectId : null,
   }
 }

@@ -15,6 +15,16 @@ import { combineChanges } from './git-parse'
 const LARGE_UNTRACKED_BYTES = 20 * 1024 * 1024
 const MAX_EXCLUDES = 200
 const MAX_TURN_FILES = 200
+const MAX_FILE_PATCH = 6000
+const LOCKFILE =
+  /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|Cargo\.lock|go\.sum|composer\.lock|Gemfile\.lock)$/
+
+export interface TurnChanges {
+  files: ChangeEntry[]
+  truncated: boolean
+  startTree: string
+  endTree: string
+}
 const TURN_START_TTL_MS = 24 * 60 * 60 * 1000
 
 export interface RepoInfo {
@@ -140,22 +150,81 @@ export class ChangesService {
     this.turnStarts.set(`${projectId}:${promptId}`, { tree, at: now })
   }
 
-  /** What changed during the turn, including edits made through Bash. Null if the start is unknown. */
-  endTurn(
+  /**
+   * What changed during the turn so far, including edits made through Bash. `finish` forgets the
+   * turn's start; without it (a guard sending the turn back) the next check counts from the same
+   * start. Null if the start is unknown.
+   */
+  turnChanges(
     projectId: string,
     root: string,
     promptId: string,
-  ): Promise<{ files: ChangeEntry[]; truncated: boolean } | null> {
+    finish: boolean,
+  ): Promise<TurnChanges | null> {
     return this.queue.run(projectId, async () => {
       const key = `${projectId}:${promptId}`
       const start = this.turnStarts.get(key)
       if (!start) return null
-      this.turnStarts.delete(key)
+      if (finish) this.turnStarts.delete(key)
       const info = await this.repoInfo(root)
       if (!info) return null
-      const entries = await this.diffTrees(info, start.tree, await this.snapshotTree(info))
-      return { files: entries.slice(0, MAX_TURN_FILES), truncated: entries.length > MAX_TURN_FILES }
+      const endTree = await this.snapshotTree(info)
+      const entries = await this.diffTrees(info, start.tree, endTree)
+      return {
+        files: entries.slice(0, MAX_TURN_FILES),
+        truncated: entries.length > MAX_TURN_FILES,
+        startTree: start.tree,
+        endTree,
+      }
     })
+  }
+
+  /** Same as turnChanges(…, finish = true); kept for callers that only need the result. */
+  endTurn(projectId: string, root: string, promptId: string): Promise<TurnChanges | null> {
+    return this.turnChanges(projectId, root, promptId, true)
+  }
+
+  /**
+   * Unified diff between two trees for analysis, risk-area files first, lockfiles and binaries
+   * left out, each file and the whole capped so a huge turn still fits a prompt.
+   */
+  async turnPatch(
+    root: string,
+    startTree: string,
+    endTree: string,
+    files: readonly ChangeEntry[],
+    firstPaths: ReadonlySet<string>,
+    maxChars = 40_000,
+  ): Promise<string> {
+    const git = await this.git()
+    const info = await this.repoInfo(root)
+    if (!git || !info) return ''
+    const prefix = info.prefix ? `${info.prefix}/` : ''
+    const ordered = [...files]
+      .filter((f) => !f.binary && !LOCKFILE.test(f.path))
+      .sort((a, b) => Number(firstPaths.has(b.path)) - Number(firstPaths.has(a.path)))
+    let out = ''
+    for (const f of ordered) {
+      if (out.length >= maxChars) {
+        out += `\n… (more files not shown)\n`
+        break
+      }
+      const diff =
+        (await git.tryRun(info.top, [
+          'diff-tree',
+          '-p',
+          '--no-color',
+          '-M',
+          startTree,
+          endTree,
+          '--',
+          prefix + f.path,
+        ])) ?? ''
+      const body =
+        diff.length > MAX_FILE_PATCH ? `${diff.slice(0, MAX_FILE_PATCH)}\n… (truncated)\n` : diff
+      out += body
+    }
+    return out.slice(0, maxChars + 200)
   }
 
   private async diffTrees(info: RepoInfo, base: string, current: string): Promise<ChangeEntry[]> {

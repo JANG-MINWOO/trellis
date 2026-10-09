@@ -220,6 +220,12 @@ export class TerminalService {
     }
   }
 
+  /** The agent executable and the environment it runs with (also used for headless analysis). */
+  async agentLaunch(): Promise<{ executable: string | null; env: Record<string, string> }> {
+    const env = await this.childEnv()
+    return { executable: this.resolveAgent(env), env }
+  }
+
   private resolveAgent(env: Record<string, string>): string | null {
     const configured = this.deps.settings().claude.path.trim()
     if (configured) return existsSync(configured) ? configured : null

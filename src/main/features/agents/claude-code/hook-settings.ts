@@ -32,8 +32,9 @@ export function buildHookSettings(url: string): Record<string, unknown> {
   })
   const hooks: Record<string, unknown[]> = {}
   for (const event of HOOK_EVENTS) {
-    // SessionEnd hooks share a 1.5s budget; keep ours well inside it.
-    const group: Record<string, unknown> = { hooks: [hook(event === 'SessionEnd' ? 1 : 5)] }
+    // SessionEnd hooks share a 1.5s budget; Stop may wait for the project's checks (guard).
+    const timeout = event === 'SessionEnd' ? 1 : event === 'Stop' ? 120 : 5
+    const group: Record<string, unknown> = { hooks: [hook(timeout)] }
     if (event === 'PostToolUse' || event === 'PostToolUseFailure') group.matcher = '*'
     hooks[event] = [group]
   }

@@ -13,6 +13,7 @@ import type { ChangeStatus } from '@shared/types'
 import { Badge, Spinner } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import { clockTime, duration, splitPath } from '../../lib/format'
+import { TurnInsights } from './TurnInsights'
 
 const STATUS_COLOR: Record<ChangeStatus, string> = {
   A: 'text-success',
@@ -107,6 +108,8 @@ export function TurnCard({
           )}
         </div>
       )}
+
+      {turn.status !== 'running' && <TurnInsights turn={turn} />}
 
       {files.length > 0 && (
         <ul className="mt-2 space-y-0.5">

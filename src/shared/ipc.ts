@@ -1,6 +1,10 @@
 // The contract between main and renderer. preload implements TrellisApi on top of these channels.
 import type {
   AppInfo,
+  BehaviorResolution,
+  DecisionResolution,
+  IntentData,
+  SpecList,
   EditorApp,
   Baseline,
   ChangeReport,
@@ -44,6 +48,11 @@ export const Invoke = {
   changesResetBaseline: 'changes:reset-baseline',
   gitInit: 'git:init',
   decisionsList: 'decisions:list',
+  decisionsResolve: 'decisions:resolve',
+  specsList: 'specs:list',
+  behaviorsResolve: 'behaviors:resolve',
+  behaviorsFromIntent: 'behaviors:from-intent',
+  projectAreas: 'projects:areas',
   healthGet: 'health:get',
   watchProject: 'project:watch',
 } as const
@@ -64,6 +73,7 @@ export const Push = {
   projectFsChanged: 'push:project-fs-changed',
   settingsChanged: 'push:settings-changed',
   menuCommand: 'push:menu-command',
+  analysisStatus: 'push:analysis-status',
 } as const
 
 export type MenuCommand =
@@ -100,6 +110,8 @@ export interface TrellisApi {
     reveal(projectId: string, relPath?: string): Promise<void>
     /** Tell main which project to watch for file changes (null to stop). */
     watch(projectId: string | null): Promise<void>
+    /** Feature areas of the project with file counts, for predicting where a task will land. */
+    areas(projectId: string): Promise<{ area: string; files: number }[]>
     onFsChanged(cb: (projectId: string) => void): Unsubscribe
   }
   files: {
@@ -133,13 +145,32 @@ export interface TrellisApi {
     list(projectId: string, limit?: number): Promise<TrellisEvent[]>
     onEvent(cb: (event: TrellisEvent) => void): Unsubscribe
   }
-  intent: { save(projectId: string, text: string): Promise<TrellisEvent> }
+  intent: { save(projectId: string, intent: IntentData): Promise<TrellisEvent> }
   changes: {
     get(projectId: string, baseline: Baseline): Promise<ChangeReport>
     resetBaseline(projectId: string): Promise<void>
     initRepo(projectId: string): Promise<{ ok: boolean; message?: string }>
   }
-  decisions: { list(projectId: string): Promise<DecisionList> }
+  decisions: {
+    list(projectId: string): Promise<DecisionList>
+    /** Records (accepted) or drops (dismissed) a candidate. Accepted ones become a record file. */
+    resolve(
+      projectId: string,
+      candidateId: string,
+      answer: Pick<DecisionResolution, 'resolution' | 'reason' | 'reasonFromGuess'>,
+    ): Promise<{ ok: boolean; docPath: string | null; message?: string }>
+  }
+  specs: {
+    list(projectId: string): Promise<SpecList>
+    resolve(
+      projectId: string,
+      candidateId: string,
+      answer: Pick<BehaviorResolution, 'resolution' | 'statement' | 'area'>,
+    ): Promise<{ ok: boolean; specPath: string | null; message?: string }>
+    /** Turns "must not" lines of an intent into invariant candidates. */
+    fromIntent(projectId: string, lines: string[], area: string): Promise<void>
+  }
+  analysis: { onStatus(cb: (status: { projectId: string; running: boolean }) => void): Unsubscribe }
   health: { get(projectId: string): Promise<HealthReport | null> }
   menu: { onCommand(cb: (command: MenuCommand) => void): Unsubscribe }
 }

@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import type { Language, Project } from '@shared/types'
-import { Button, FieldRow, Select } from '../../components/ui'
+import { DEFAULT_RISK_AREAS } from '@shared/defaults'
+import { Button, FieldRow, Select, Switch } from '../../components/ui'
 import { api } from '../../lib/api'
 import { useStore } from '../../state/store'
-import { CommitInput } from './CommitInput'
+import { CommitInput, CommitLines } from './CommitInput'
 
 export function ProjectSettings({ project }: { project: Project }) {
   const { t } = useTranslation()
@@ -35,6 +36,44 @@ export function ProjectSettings({ project }: { project: Project }) {
           value={project.decisionsDir}
           placeholder="docs/decisions"
           onCommit={(decisionsDir) => void updateProject({ decisionsDir })}
+        />
+      </FieldRow>
+      <FieldRow label={t('settings.specsDir')} hint={t('settings.specsDirHint')}>
+        <CommitInput
+          value={project.specsDir}
+          placeholder="docs/specs"
+          onCommit={(specsDir) => void updateProject({ specsDir })}
+        />
+      </FieldRow>
+      <FieldRow
+        label={t('settings.analysisEnabled')}
+        hint={t('settings.analysisEnabledHint')}
+        inline
+      >
+        <Switch
+          checked={project.analysisEnabled}
+          onCheckedChange={(analysisEnabled) => void updateProject({ analysisEnabled })}
+          label={t('settings.analysisEnabled')}
+        />
+      </FieldRow>
+      <FieldRow
+        label={t('settings.riskAreas')}
+        hint={
+          <>
+            {t('settings.riskAreasHint')}{' '}
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-fg"
+              onClick={() => void updateProject({ riskAreas: [...DEFAULT_RISK_AREAS] })}
+            >
+              {t('settings.riskAreasReset')}
+            </button>
+          </>
+        }
+      >
+        <CommitLines
+          value={project.riskAreas}
+          onCommit={(riskAreas) => void updateProject({ riskAreas })}
         />
       </FieldRow>
       <FieldRow label={t('settings.recordLanguage')} hint={t('settings.recordLanguageHint')} inline>

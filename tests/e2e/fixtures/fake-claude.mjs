@@ -8,71 +8,153 @@ import path from 'node:path'
 import readline from 'node:readline'
 
 const args = process.argv.slice(2)
-const settings = JSON.parse(fs.readFileSync(args[args.indexOf('--settings') + 1], 'utf8'))
-const hook = settings.hooks.UserPromptSubmit[0].hooks[0]
-const headers = Object.fromEntries(
-  Object.entries(hook.headers).map(([k, v]) => [
-    k,
-    v.replace(/\$\{(\w+)\}/g, (_, name) =>
-      hook.allowedEnvVars.includes(name) ? (process.env[name] ?? '') : '',
-    ),
-  ]),
-)
-const sessionId = args.includes('--session-id')
-  ? args[args.indexOf('--session-id') + 1]
-  : 'fake-session'
 
-function post(body) {
-  return new Promise((resolve) => {
-    const req = http.request(
-      hook.url,
-      { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' } },
-      (res) => {
-        res.resume()
-        res.on('end', resolve)
-      },
+// Headless analysis (`-p`): answer with a canned structured result, like `--output-format json`.
+// Exits early so the interactive part below never runs.
+if (args.includes('-p')) {
+  const isolated = ['--restricted', '--strict-mcp-config', '--no-session-persistence'].every((f) =>
+    args.includes(f),
+  )
+  let input = ''
+  process.stdin.setEncoding('utf8')
+  process.stdin.on('data', (c) => (input += c))
+  process.stdin.on('end', () => {
+    const touched = input.includes('notes.md')
+    const output = {
+      decisions:
+        isolated && touched
+          ? [
+              {
+                title: 'Keep notes in a plain markdown file',
+                what: 'Every prompt is appended to notes.md.',
+                whyGuess: 'Simple to read without tools',
+                alternatives: 'A database table',
+                consequences: 'Anyone can read the notes in any editor, but there is no search.',
+                kind: 'data',
+                risk: 'medium',
+                files: ['notes.md', 'not-changed.md'],
+              },
+            ]
+          : [],
+      behaviors: touched
+        ? [
+            {
+              op: 'add',
+              kind: 'behavior',
+              area: 'Notes',
+              targetId: '',
+              statement: 'WHEN a prompt is sent, THE SYSTEM SHALL append it to notes.md.',
+              files: ['notes.md'],
+            },
+          ]
+        : [],
+    }
+    process.stdout.write(
+      JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        result: '',
+        structured_output: output,
+      }),
     )
-    req.on('error', resolve)
-    req.end(JSON.stringify({ session_id: sessionId, cwd: process.cwd(), ...body }))
+    process.exit(0)
   })
+} else {
+  interactive()
 }
 
-// Real Claude Code does not send SessionStart over HTTP hooks; neither do we.
-const flags = args.map((a, i) => (args[i - 1] === '--settings' ? '<settings>' : a)).join(' ')
-process.stdout.write(`\x1b[1;32mFake Claude\x1b[0m ready. args: ${flags}\r\n> `)
+function interactive() {
+  const settings = JSON.parse(fs.readFileSync(args[args.indexOf('--settings') + 1], 'utf8'))
+  const hook = settings.hooks.UserPromptSubmit[0].hooks[0]
+  const headers = Object.fromEntries(
+    Object.entries(hook.headers).map(([k, v]) => [
+      k,
+      v.replace(/\$\{(\w+)\}/g, (_, name) =>
+        hook.allowedEnvVars.includes(name) ? (process.env[name] ?? '') : '',
+      ),
+    ]),
+  )
+  const sessionId = args.includes('--session-id')
+    ? args[args.indexOf('--session-id') + 1]
+    : 'fake-session'
 
-const rl = readline.createInterface({ input: process.stdin })
-rl.on('line', async (raw) => {
-  // Bracketed-paste markers arrive when text comes from Trellis' input box.
-  const line = raw.replaceAll('\x1b[200~', '').replaceAll('\x1b[201~', '')
-  if (!line) return
-  const promptId = randomUUID()
-  await post({ hook_event_name: 'UserPromptSubmit', prompt: line, prompt_id: promptId })
-  const file = path.join(process.cwd(), 'src', 'feature', 'fake-output.txt')
-  fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(file, `prompt: ${line}\nline two\n`)
-  await post({
-    hook_event_name: 'PostToolUse',
-    prompt_id: promptId,
-    tool_name: 'Write',
-    tool_input: { file_path: file, content: '…' },
-    tool_response: { type: 'create' },
-    duration_ms: 5,
+  /** Posts a hook payload; resolves with the parsed response body (null when empty). */
+  function post(body) {
+    return new Promise((resolve) => {
+      const req = http.request(
+        hook.url,
+        { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' } },
+        (res) => {
+          let text = ''
+          res.setEncoding('utf8')
+          res.on('data', (c) => (text += c))
+          res.on('end', () => {
+            try {
+              resolve(text ? JSON.parse(text) : null)
+            } catch {
+              resolve(null)
+            }
+          })
+        },
+      )
+      req.on('error', () => resolve(null))
+      req.end(JSON.stringify({ session_id: sessionId, cwd: process.cwd(), ...body }))
+    })
+  }
+
+  // Real Claude Code does not send SessionStart over HTTP hooks; neither do we.
+  const flags = args.map((a, i) => (args[i - 1] === '--settings' ? '<settings>' : a)).join(' ')
+  process.stdout.write(`\x1b[1;32mFake Claude\x1b[0m ready. args: ${flags}\r\n> `)
+
+  const rl = readline.createInterface({ input: process.stdin })
+  rl.on('line', async (raw) => {
+    // Bracketed-paste markers arrive when text comes from Trellis' input box.
+    const line = raw.replaceAll('\x1b[200~', '').replaceAll('\x1b[201~', '')
+    if (!line) return
+    const promptId = randomUUID()
+    await post({ hook_event_name: 'UserPromptSubmit', prompt: line, prompt_id: promptId })
+    const file = path.join(process.cwd(), 'src', 'feature', 'fake-output.txt')
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, `prompt: ${line}\nline two\n`)
+    await post({
+      hook_event_name: 'PostToolUse',
+      prompt_id: promptId,
+      tool_name: 'Write',
+      tool_input: { file_path: file, content: '…' },
+      tool_response: { type: 'create' },
+      duration_ms: 5,
+    })
+    // Like Claude appending with `cat >>`: the hook only sees a Bash command, git sees the file.
+    fs.appendFileSync(path.join(process.cwd(), 'notes.md'), `- ${line}\n`)
+    await post({
+      hook_event_name: 'PostToolUse',
+      prompt_id: promptId,
+      tool_name: 'Bash',
+      tool_input: { command: 'cat >> notes.md', description: 'Append a note' },
+      duration_ms: 1200,
+    })
+    // A prompt containing "BIGFILE" also writes an over-long file, which a guard may send back.
+    const big = path.join(process.cwd(), 'src', 'feature', 'big.txt')
+    if (line.includes('BIGFILE')) fs.writeFileSync(big, 'x\n'.repeat(900))
+    const stop = await post({
+      hook_event_name: 'Stop',
+      prompt_id: promptId,
+      stop_hook_active: false,
+      last_assistant_message: `I created src/feature/fake-output.txt for: ${line}`,
+    })
+    // Like Claude: a "block" answer means keep working on the reason, then stop again.
+    if (stop?.decision === 'block') {
+      process.stdout.write(`\r\nBlocked: ${String(stop.reason).split('\n')[0]}\r\n`)
+      fs.writeFileSync(big, 'x\n'.repeat(10))
+      await post({
+        hook_event_name: 'Stop',
+        prompt_id: promptId,
+        stop_hook_active: true,
+        last_assistant_message: 'Fixed the problems the check reported.',
+      })
+    }
+    process.stdout.write(`\r\nDone: ${line}\r\n> `)
   })
-  // Like Claude appending with `cat >>`: the hook only sees a Bash command, git sees the file.
-  fs.appendFileSync(path.join(process.cwd(), 'notes.md'), `- ${line}\n`)
-  await post({
-    hook_event_name: 'PostToolUse',
-    prompt_id: promptId,
-    tool_name: 'Bash',
-    tool_input: { command: 'cat >> notes.md', description: 'Append a note' },
-    duration_ms: 1200,
-  })
-  await post({
-    hook_event_name: 'Stop',
-    prompt_id: promptId,
-    last_assistant_message: `I created src/feature/fake-output.txt for: ${line}`,
-  })
-  process.stdout.write(`\r\nDone: ${line}\r\n> `)
-})
-rl.on('close', () => process.exit(0))
+  rl.on('close', () => process.exit(0))
+}

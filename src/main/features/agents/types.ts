@@ -38,4 +38,11 @@ export interface AgentAdapter {
   scrubInheritedEnv(env: Record<string, string>): void
   /** Keystroke that makes the agent read an image from the system clipboard, if it has one. */
   imagePasteKeys(platform: NodeJS.Platform): string | null
+  /**
+   * Arguments for a one-shot, tool-less, isolated run that answers with JSON matching `schema`.
+   * Isolation matters: the user's own hooks and MCP servers must not run for Trellis' analysis.
+   */
+  headlessArgs(options: { schema: object; model: string }): string[]
+  /** Extracts the structured answer from a headless run's stdout. */
+  parseHeadless(stdout: string): { ok: true; data: unknown } | { ok: false; message: string }
 }

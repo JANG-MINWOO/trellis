@@ -4,6 +4,7 @@ import { ChevronRight, GitBranch, GitCompareArrows, RefreshCw, RotateCcw } from 
 import type { ChangeEntry, ChangeStatus } from '@shared/types'
 import { Button, EmptyState, IconButton, Notice, Segmented, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
+import { areaLabel } from '../../lib/area'
 import { cn } from '../../lib/cn'
 import { clockTime, formatNumber, relativeTime, splitPath } from '../../lib/format'
 import { useActiveProject, useStore } from '../../state/store'
@@ -192,7 +193,7 @@ export function ChangesPanel() {
                       )}
                     />
                     <span className="min-w-0 flex-1 truncate text-xs font-semibold text-fg">
-                      {group.area === '.' ? t('changes.rootArea') : group.area}
+                      {areaLabel(group.area, t('changes.rootArea'))}
                     </span>
                     <span className="text-2xs text-fg-faint tabular-nums">
                       {group.files.length}

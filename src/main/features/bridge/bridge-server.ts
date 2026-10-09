@@ -1,5 +1,6 @@
 // Local HTTP endpoint that receives agent hook payloads (ADR-0003). Bound to 127.0.0.1 and
-// guarded by a random token; replies 200 with an empty body, which Claude Code treats as a no-op.
+// guarded by a random token; replies 200 with an empty body, which Claude Code treats as a no-op,
+// or with the handler's JSON (a Stop "block" from the guard, ADR-0027).
 // The reply waits (briefly) for the handler, so work done for a prompt hook — like the turn's git
 // snapshot — happens before Claude starts acting on the prompt.
 import { randomBytes, timingSafeEqual } from 'node:crypto'
@@ -15,7 +16,10 @@ export interface BridgePayload {
   receivedAt: number
 }
 
-export type BridgeHandler = (payload: BridgePayload) => Promise<void>
+/** May return a JSON body for the hook response (e.g. {decision: "block"} for Stop). */
+export type BridgeHandler = (
+  payload: BridgePayload,
+) => Promise<Record<string, unknown> | undefined | void>
 
 export class BridgeServer {
   readonly token = randomBytes(24).toString('hex')
@@ -26,6 +30,8 @@ export class BridgeServer {
     private readonly handler: BridgeHandler,
     /** Longest a hook waits for the handler; Claude never blocks longer than this on Trellis. */
     private readonly ackTimeoutMs = 1500,
+    /** Stop may run the project's checks before answering (guard); its hook timeout is longer. */
+    private readonly stopTimeoutMs = 115_000,
   ) {}
 
   get url(): string {
@@ -54,10 +60,16 @@ export class BridgeServer {
   }
 
   private handle(req: http.IncomingMessage, res: http.ServerResponse): void {
-    const reply = (status: number): void => {
+    const reply = (status: number, body?: Record<string, unknown>): void => {
       if (res.headersSent) return
-      res.writeHead(status, { 'Content-Length': '0' })
-      res.end()
+      const json = body ? Buffer.from(JSON.stringify(body)) : null
+      res.writeHead(
+        status,
+        json
+          ? { 'Content-Type': 'application/json', 'Content-Length': String(json.length) }
+          : { 'Content-Length': '0' },
+      )
+      res.end(json ?? undefined)
     }
     if (req.method !== 'POST' || req.url !== '/events') return reply(404)
     if (!this.authorized(req.headers.authorization)) return reply(401)
@@ -84,11 +96,21 @@ export class BridgeServer {
       }
       if (!projectId) return reply(200)
       const terminalId = String(req.headers['x-trellis-terminal'] ?? '') || null
+      const isStop = (raw as { hook_event_name?: unknown } | null)?.hook_event_name === 'Stop'
       const work = this.handler({ raw, projectId, terminalId, receivedAt: Date.now() }).catch(
         () => undefined,
       )
-      const timeout = new Promise((resolve) => setTimeout(resolve, this.ackTimeoutMs))
-      void Promise.race([work, timeout]).then(() => reply(200))
+      let timer: NodeJS.Timeout | undefined
+      const timeout = new Promise<undefined>((resolve) => {
+        timer = setTimeout(
+          () => resolve(undefined),
+          isStop ? this.stopTimeoutMs : this.ackTimeoutMs,
+        )
+      })
+      void Promise.race([work, timeout]).then((body) => {
+        clearTimeout(timer)
+        reply(200, body ?? undefined)
+      })
     })
   }
 }

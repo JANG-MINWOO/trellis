@@ -78,6 +78,40 @@ describe('claudeCodeAdapter.scrubInheritedEnv', () => {
   })
 })
 
+describe('claudeCodeAdapter headless', () => {
+  it('isolates the run and asks for structured JSON', () => {
+    const args = claudeCodeAdapter.headlessArgs({ schema: { type: 'object' }, model: 'sonnet' })
+    expect(args).toEqual(
+      expect.arrayContaining([
+        '-p',
+        '--restricted',
+        '--strict-mcp-config',
+        '--no-session-persistence',
+      ]),
+    )
+    expect(args[args.indexOf('--tools') + 1]).toBe('')
+    expect(args[args.indexOf('--json-schema') + 1]).toBe('{"type":"object"}')
+  })
+
+  it('reads structured_output and reports errors', () => {
+    expect(
+      claudeCodeAdapter.parseHeadless(
+        JSON.stringify({
+          subtype: 'success',
+          is_error: false,
+          structured_output: { decisions: [] },
+        }),
+      ),
+    ).toEqual({ ok: true, data: { decisions: [] } })
+    expect(
+      claudeCodeAdapter.parseHeadless(
+        JSON.stringify({ subtype: 'error_max_turns', is_error: true, result: 'x' }),
+      ).ok,
+    ).toBe(false)
+    expect(claudeCodeAdapter.parseHeadless('not json').ok).toBe(false)
+  })
+})
+
 describe('claudeCodeAdapter.imagePasteKeys', () => {
   it('uses Ctrl+V on macOS/Linux and Alt+V on Windows', () => {
     expect(claudeCodeAdapter.imagePasteKeys('darwin')).toBe('\x16')

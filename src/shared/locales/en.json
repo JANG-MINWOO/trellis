@@ -120,10 +120,18 @@
     "title": "Intent",
     "write": "Write intent",
     "empty": "Before you start, write down what you want to do and what must not break. Later it answers \"why did we do this?\"",
-    "placeholder": "Goal: lock an account for 30 minutes after 5 failed logins\nMust not: change the existing session token format\nExpected impact: auth, members",
-    "hint": "Write it yourself, briefly — that is the point. ⌘/Ctrl+Enter saves.",
+    "hint": "Write it yourself, briefly — that is the point. One \"must not\" per line can become an invariant in the behavior spec.",
     "saveAndPaste": "Save and paste into Claude",
-    "noClaude": "No running Claude session to paste into. Your intent was saved."
+    "noClaude": "No running Claude session to paste into. Your intent was saved.",
+    "goal": "Goal",
+    "goalPlaceholder": "Lock the account for 30 minutes after 5 failed logins",
+    "mustNot": "Must not",
+    "mustNotPlaceholder": "Do not change the session token format\nDo not touch payment amount calculation",
+    "predicted": "Where changes should land",
+    "predictedHint": "After the work, Trellis compares this with what actually changed.",
+    "toInvariants": "To invariants",
+    "invariantsSent_one": "Sent {{count}} item to the Behavior tab. Review and apply it there.",
+    "invariantsSent_other": "Sent {{count}} items to the Behavior tab. Review and apply them there."
   },
   "inspector": {
     "noProject": "Open a project to see its intent, timeline, changes, decisions and health here."
@@ -151,7 +159,20 @@
     "sessionCompact": "Conversation compacted",
     "sessionEnd": "Conversation ended",
     "allTabs": "All tabs",
-    "closedTab": "Closed tab"
+    "closedTab": "Closed tab",
+    "decisions_one": "{{count}} decision",
+    "decisions_other": "{{count}} decisions",
+    "behaviors_one": "{{count}} behavior change",
+    "behaviors_other": "{{count}} behavior changes",
+    "violations_one": "{{count}} rule break",
+    "violations_other": "{{count}} rule breaks",
+    "checkFailed": "Check failed",
+    "sentBack": "sent back",
+    "analysisFailed": "Analysis failed",
+    "prediction": "Prediction:",
+    "predictionMatched": "only the expected areas changed",
+    "unpredicted": "unexpected: {{areas}}",
+    "untouched": "unchanged: {{areas}}"
   },
   "changes": {
     "title": "Changes",
@@ -183,7 +204,44 @@
     "missing": "The decisions folder ({{dir}}) does not exist",
     "missingHint": "One short markdown file per decision. If this project keeps decisions elsewhere, change the folder in Settings.",
     "configure": "Set folder",
-    "upcoming": "Next version: when a turn ends, Trellis detects new decisions, asks you why, and records your answer here."
+    "pendingTitle": "Decisions to review",
+    "analyzing": "Looking at the last turn…",
+    "noPending": "Each time Claude finishes, Trellis looks for choices that are hard to reverse or shape future work, and puts them here.",
+    "analysisOff": "Turn analysis is off for this project. Only changes in risk areas show up here. You can turn it on in Settings.",
+    "risk": {
+      "high": "Important",
+      "medium": "Moderate",
+      "low": "Minor"
+    },
+    "kind": {
+      "dependency": "Dependency",
+      "architecture": "Architecture",
+      "data": "Data",
+      "security": "Security",
+      "api": "API",
+      "behavior": "Behavior",
+      "infra": "Infra",
+      "other": "Other"
+    },
+    "fromRiskArea": "Risk area",
+    "fromAnalysis": "Turn analysis",
+    "consequences": "What changes because of it",
+    "details": "AI's guess, alternatives, files",
+    "whyGuess": "AI's guess at the reason:",
+    "alternatives": "Alternatives not taken:",
+    "reasonPlaceholder": "Why was it done this way? Write a line or two yourself.",
+    "reasonPlaceholderGuess": "Why was it done this way? Write a line or two yourself. (AI guess: {{guess}})",
+    "noRecordFiles": "The decision records folder is off, so this stays inside Trellis only.",
+    "useGuess": "Record the AI's guess as the reason",
+    "dismiss": "Not a decision",
+    "record": "Record",
+    "resolveFailed": "Could not save: {{message}}",
+    "recorded": "Recorded in {{path}}",
+    "recordedLedger": "Kept in the Trellis log",
+    "usage_one": "Turn analysis ran {{count}} time in this project",
+    "usage_other": "Turn analysis ran {{count}} times in this project",
+    "usageFailed_one": "{{count}} failed",
+    "usageFailed_other": "{{count}} failed"
   },
   "health": {
     "title": "Health",
@@ -253,7 +311,16 @@
     "gpu": "GPU-accelerated rendering",
     "gpuHint": "Faster with heavy output, but on some setups the screen may stop repainting. Turn it off if typed text does not appear.",
     "composer": "Claude input box",
-    "composerHint": "A regular text box under Claude tabs. Text is finished by your input method and sent at once, avoiding Claude Code splitting Korean into jamo after switching languages."
+    "composerHint": "A regular text box under Claude tabs. Text is finished by your input method and sent at once, avoiding Claude Code splitting Korean into jamo after switching languages.",
+    "specsDir": "Behavior specs folder",
+    "specsDirHint": "Markdown folder with behaviors and invariants per feature area. Leave empty to not use behavior specs.",
+    "analysisEnabled": "Turn analysis",
+    "analysisEnabledHint": "Each time Claude finishes, Trellis looks for decisions and behavior changes and asks you about them. This costs one extra Claude call per turn (subscription usage).",
+    "riskAreas": "Risk areas",
+    "riskAreasHint": "Changes to files matching these patterns always ask for a human check, with or without analysis. One per line.",
+    "riskAreasReset": "Reset to defaults",
+    "analysisModel": "Analysis model",
+    "analysisModelHint": "Model used for turn analysis. sonnet balances accuracy and speed; haiku is faster and lighter."
   },
   "toast": {
     "editorFailed": "Could not open the file. {{message}}",
@@ -312,5 +379,32 @@
     "hint": "Enter to send · Shift+Enter for a new line · paste images, drop files · Esc when empty interrupts Claude · click the terminal for menus",
     "images_one": "Attached {{count}} image to Claude’s input. It goes with your message.",
     "images_other": "Attached {{count}} images to Claude’s input. They go with your message."
+  },
+  "specs": {
+    "title": "Behavior",
+    "pendingTitle": "Behavior changes to review",
+    "noPending": "When Claude's work changes what users see, it shows up here. Applied changes go into the behavior spec files.",
+    "op": {
+      "add": "Add",
+      "change": "Change",
+      "remove": "Remove"
+    },
+    "kind": {
+      "behavior": "Behavior",
+      "invariant": "Invariant"
+    },
+    "fromIntent": "From intent",
+    "fromAnalysis": "Turn analysis",
+    "area": "Area",
+    "dismiss": "Dismiss",
+    "accept": "Apply",
+    "resolveFailed": "Could not apply: {{message}}",
+    "written": "Applied to {{path}}",
+    "disabled": "The behavior spec folder is off for this project",
+    "empty": "No behavior specs yet",
+    "emptyHint": "Applying a behavior change creates one file per feature area in {{dir}}.",
+    "noTest": "No test",
+    "testHint": "Mention an item id such as B-001 in a test name or body to link it here.",
+    "generalArea": "General"
   }
 }

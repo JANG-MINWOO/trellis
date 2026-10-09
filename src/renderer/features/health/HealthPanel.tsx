@@ -4,6 +4,7 @@ import { RefreshCw } from 'lucide-react'
 import type { HealthReport } from '@shared/types'
 import { IconButton, Notice, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
+import { areaLabel } from '../../lib/area'
 import { cn } from '../../lib/cn'
 import { formatNumber, relativeTime, splitPath } from '../../lib/format'
 import { useActiveProject, useStore } from '../../state/store'
@@ -133,9 +134,7 @@ function ProjectHealth() {
             key={d.path}
             className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs"
           >
-            <span className="truncate text-fg">
-              {d.path === '.' ? t('changes.rootArea') : d.path}
-            </span>
+            <span className="truncate text-fg">{areaLabel(d.path, t('changes.rootArea'))}</span>
             <span className="text-fg-muted tabular-nums">
               {t('health.fileCount', { count: d.files })}
             </span>

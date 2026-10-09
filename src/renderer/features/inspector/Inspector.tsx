@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { pendingDecisions } from '@shared/decisions'
+import { pendingBehaviors } from '@shared/specs'
 import { useTranslation } from 'react-i18next'
 import { Tabs } from 'radix-ui'
 import { cn } from '../../lib/cn'
@@ -8,6 +10,7 @@ import { ChangesPanel } from '../changes'
 import { DecisionsPanel } from '../decisions'
 import { HealthPanel } from '../health'
 import { IntentCard } from '../intent'
+import { SpecsPanel } from '../specs'
 import { TimelinePanel } from '../timeline'
 
 export function Inspector() {
@@ -19,6 +22,14 @@ export function Inspector() {
   const timeline = useTimeline(project?.id ?? null)
   const turnCount = useMemo(() => timeline.filter((i) => i.type === 'turn').length, [timeline])
   const changeCount = report?.kind === 'ok' ? report.totals.files : 0
+  const events = useStore((s) => (project ? s.events[project.id] : undefined))
+  const pending = useMemo(
+    () =>
+      events
+        ? { decisions: pendingDecisions(events).length, behaviors: pendingBehaviors(events).length }
+        : null,
+    [events],
+  )
 
   if (!project) {
     return (
@@ -28,7 +39,7 @@ export function Inspector() {
     )
   }
 
-  const trigger = (value: RightTab, label: string, count?: number) => (
+  const trigger = (value: RightTab, label: string, count?: number, attention = false) => (
     <Tabs.Trigger
       value={value}
       className={cn(
@@ -38,7 +49,12 @@ export function Inspector() {
     >
       {label}
       {!!count && (
-        <span className="rounded bg-surface-3 px-1 text-2xs text-fg-muted tabular-nums">
+        <span
+          className={cn(
+            'rounded px-1 text-2xs tabular-nums',
+            attention ? 'bg-warning-soft text-warning' : 'bg-surface-3 text-fg-muted',
+          )}
+        >
           {count}
         </span>
       )}
@@ -53,10 +69,11 @@ export function Inspector() {
         onValueChange={(v) => setTab(v as RightTab)}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <Tabs.List className="flex shrink-0 gap-4 border-b border-border px-3">
+        <Tabs.List className="scroll-thin flex shrink-0 gap-3.5 overflow-x-auto border-b border-border px-3">
           {trigger('timeline', t('timeline.title'), turnCount)}
           {trigger('changes', t('changes.title'), changeCount)}
-          {trigger('decisions', t('decisions.title'))}
+          {trigger('decisions', t('decisions.title'), pending?.decisions, true)}
+          {trigger('specs', t('specs.title'), pending?.behaviors, true)}
           {trigger('health', t('health.title'))}
         </Tabs.List>
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
@@ -68,6 +85,9 @@ export function Inspector() {
           </Tabs.Content>
           <Tabs.Content value="decisions" className="outline-none">
             <DecisionsPanel />
+          </Tabs.Content>
+          <Tabs.Content value="specs" className="outline-none">
+            <SpecsPanel />
           </Tabs.Content>
           <Tabs.Content value="health" className="outline-none">
             <HealthPanel />
