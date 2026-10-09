@@ -6,6 +6,9 @@ import type { RulesService } from '../rules'
 import { comparisonBase, computeTrend, shouldRecord, toSnapshot } from './health-trend'
 
 export class HealthService {
+  /** Daily snapshots per project, read from the ledger once and kept up to date here. */
+  private readonly snapshots = new Map<string, EventOf<'health.snapshot'>[]>()
+
   constructor(
     private readonly rules: RulesService,
     private readonly events: EventStore,
@@ -23,12 +26,10 @@ export class HealthService {
       violations: analysis.violations.length,
       newViolations: rules.newViolations.length,
     })
-    const snapshots = (await this.events.list(project.id, 50_000)).filter(
-      (e): e is EventOf<'health.snapshot'> => e.kind === 'health.snapshot',
-    )
+    const snapshots = await this.snapshotsOf(project.id)
     const trend = computeTrend(snapshot, comparisonBase(snapshots, now))
     if (shouldRecord(snapshots, now)) {
-      await this.events.append({
+      const event: EventOf<'health.snapshot'> = {
         id: newId(),
         ts: now,
         projectId: project.id,
@@ -38,8 +39,21 @@ export class HealthService {
         terminalId: null,
         kind: 'health.snapshot',
         data: snapshot,
-      })
+      }
+      await this.events.append(event)
+      snapshots.push(event)
     }
     return { computedAt: now, ...analysis.metrics, rules, drift: analysis.drift, trend }
+  }
+
+  private async snapshotsOf(projectId: string): Promise<EventOf<'health.snapshot'>[]> {
+    let list = this.snapshots.get(projectId)
+    if (!list) {
+      list = (await this.events.list(projectId, 1_000_000)).filter(
+        (e): e is EventOf<'health.snapshot'> => e.kind === 'health.snapshot',
+      )
+      this.snapshots.set(projectId, list)
+    }
+    return list
   }
 }
