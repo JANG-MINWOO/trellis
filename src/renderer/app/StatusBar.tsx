@@ -42,7 +42,7 @@ export function StatusBar() {
         </span>
       )}
       <span className="ml-auto">
-        Trellis {appInfo?.version}
+        Trellis {appInfo?.build}
         {appInfo?.isDev && ' · dev'}
       </span>
     </div>

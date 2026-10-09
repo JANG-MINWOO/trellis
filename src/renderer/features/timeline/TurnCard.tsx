@@ -8,10 +8,19 @@ import {
   SquareTerminal,
   TriangleAlert,
 } from 'lucide-react'
-import type { TurnItem } from '@shared/timeline'
+import { turnFiles, type TurnItem } from '@shared/timeline'
+import type { ChangeStatus } from '@shared/types'
 import { Badge, Spinner } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import { clockTime, duration, splitPath } from '../../lib/format'
+
+const STATUS_COLOR: Record<ChangeStatus, string> = {
+  A: 'text-success',
+  M: 'text-warning',
+  D: 'text-danger',
+  R: 'text-info',
+  T: 'text-warning',
+}
 
 export function TurnCard({
   turn,
@@ -24,7 +33,8 @@ export function TurnCard({
   const [expanded, setExpanded] = useState(false)
   const commands = turn.tools.filter((x) => x.command)
   const failures = turn.tools.filter((x) => x.failed)
-  const files = expanded ? turn.files : turn.files.slice(0, 4)
+  const allFiles = turnFiles(turn)
+  const files = expanded ? allFiles : allFiles.slice(0, 4)
   const elapsed = turn.endedAt !== null ? turn.endedAt - turn.startedAt : null
 
   const statusIcon = {
@@ -74,12 +84,13 @@ export function TurnCard({
         </div>
       )}
 
-      {(turn.files.length > 0 || commands.length > 0 || failures.length > 0) && (
+      {(allFiles.length > 0 || commands.length > 0 || failures.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {turn.files.length > 0 && (
+          {allFiles.length > 0 && (
             <Badge tone="accent">
               <FileCode size={10} className="mr-1" />
-              {t('timeline.files', { count: turn.files.length })}
+              {t('timeline.files', { count: allFiles.length })}
+              {turn.changesTruncated && '+'}
             </Badge>
           )}
           {commands.length > 0 && (
@@ -100,15 +111,22 @@ export function TurnCard({
       {files.length > 0 && (
         <ul className="mt-2 space-y-0.5">
           {files.map((f) => {
-            const [name, dir] = splitPath(f)
+            const [name, dir] = splitPath(f.path)
             return (
-              <li key={f}>
+              <li key={f.path}>
                 <button
                   type="button"
-                  onClick={() => onOpenFile(f)}
+                  onClick={() => f.status !== 'D' && onOpenFile(f.path)}
                   className="flex w-full min-w-0 items-baseline gap-1.5 rounded px-1 py-0.5 text-left text-xs hover:bg-surface-2"
-                  title={f}
+                  title={f.path}
                 >
+                  {f.status && (
+                    <span
+                      className={cn('w-3 shrink-0 text-[10px] font-bold', STATUS_COLOR[f.status])}
+                    >
+                      {f.status}
+                    </span>
+                  )}
                   <span className="shrink-0 font-medium text-fg">{name}</span>
                   <span className="truncate text-2xs text-fg-faint">{dir}</span>
                 </button>
@@ -148,7 +166,7 @@ export function TurnCard({
         </div>
       )}
 
-      {(turn.files.length > 4 ||
+      {(allFiles.length > 4 ||
         commands.length > 0 ||
         turn.prompt.length > 180 ||
         (turn.lastMessage?.length ?? 0) > 180) && (

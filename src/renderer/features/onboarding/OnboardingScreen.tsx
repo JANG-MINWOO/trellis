@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CircleCheck, CircleX, FolderPlus, Sprout } from 'lucide-react'
-import type { EnvironmentStatus, Language, ToolStatus } from '@shared/types'
-import { Button, Spinner } from '../../components/ui'
+import type { EnvironmentStatus, Language, PermissionMode, ToolStatus } from '@shared/types'
+import { Button, Select, Spinner } from '../../components/ui'
 import { setLanguage } from '../../i18n'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { shortenHome } from '../../lib/format'
 import { useStore } from '../../state/store'
+import { PERMISSION_MODES } from '../terminal'
 
 /** First run: pick a language, check that Claude Code and git are there, add a first folder. */
 export function OnboardingScreen() {
@@ -19,6 +20,7 @@ export function OnboardingScreen() {
   const [lang, setLang] = useState<Language>(i18n.language === 'ko' ? 'ko' : 'en')
   const [step, setStep] = useState<'language' | 'setup'>('language')
   const [env, setEnv] = useState<EnvironmentStatus | null>(null)
+  const [permission, setPermission] = useState<PermissionMode>('claude-default')
 
   useEffect(() => setLanguage(lang), [lang])
 
@@ -31,7 +33,8 @@ export function OnboardingScreen() {
     check()
   }
 
-  const finish = (): Promise<void> => update({ language: lang })
+  const finish = (): Promise<void> =>
+    update({ language: lang, claude: { permissionMode: permission } })
 
   return (
     <div className="flex flex-1 items-center justify-center overflow-y-auto p-8">
@@ -95,6 +98,33 @@ export function OnboardingScreen() {
               <Button size="sm" variant="ghost" onClick={check}>
                 {t('onboarding.recheck')}
               </Button>
+            </div>
+
+            <h2 className="mt-6 text-sm font-semibold text-fg">
+              {t('onboarding.permissionTitle')}
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-fg-muted">
+              {t('onboarding.permissionHint')}
+            </p>
+            <div className="mt-3">
+              <Select
+                value={permission}
+                onChange={(e) => setPermission(e.target.value as PermissionMode)}
+              >
+                {PERMISSION_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {t(`permission.${mode}.label`)}
+                  </option>
+                ))}
+              </Select>
+              <p
+                className={cn(
+                  'mt-1.5 text-2xs leading-relaxed',
+                  permission === 'bypass' ? 'text-danger' : 'text-fg-faint',
+                )}
+              >
+                {t(`permission.${permission}.hint`)}
+              </p>
             </div>
 
             <h2 className="mt-6 text-sm font-semibold text-fg">{t('onboarding.projectTitle')}</h2>

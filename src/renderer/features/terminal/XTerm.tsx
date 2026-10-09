@@ -25,6 +25,7 @@ export function XTerm({ terminalId, kind, visible }: Props) {
   const fontSize = useStore((s) => s.settings?.terminal.fontSize ?? 13)
   const fontFamily = useStore((s) => s.settings?.terminal.fontFamily || DEFAULT_TERMINAL_FONT)
   const isDark = useStore((s) => s.isDark)
+  const gpu = useStore((s) => s.settings?.terminal.gpu ?? false)
   const isMac = useStore((s) => s.appInfo?.platform === 'darwin')
 
   useEffect(() => {
@@ -130,12 +131,13 @@ export function XTerm({ terminalId, kind, visible }: Props) {
     }
   }, [terminalId, kind, isMac])
 
-  // GPU rendering only for the visible terminal (browsers cap WebGL contexts).
+  // Optional GPU rendering, only for the visible terminal (browsers cap WebGL contexts). The DOM
+  // renderer is the default because it always repaints; WebGL is faster but can silently stall.
   useEffect(() => {
     const term = termRef.current
     if (!term) return
     if (visible) {
-      if (!webglRef.current) {
+      if (gpu && !webglRef.current) {
         try {
           const webgl = new WebglAddon()
           webgl.onContextLoss(() => {
@@ -156,11 +158,12 @@ export function XTerm({ terminalId, kind, visible }: Props) {
         }
         term.focus()
       })
-    } else if (webglRef.current) {
+    }
+    if ((!visible || !gpu) && webglRef.current) {
       webglRef.current.dispose()
       webglRef.current = null
     }
-  }, [visible])
+  }, [visible, gpu])
 
   useEffect(() => {
     const term = termRef.current

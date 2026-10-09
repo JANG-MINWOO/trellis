@@ -5,6 +5,7 @@ import type {
   EditorKind,
   Language,
   LaunchMode,
+  PermissionMode,
   Settings,
   SettingsPatch,
   ThemePreference,
@@ -43,22 +44,41 @@ export function normalizeSettings(raw: unknown): Settings {
       path: str(claude.path, d.claude.path),
       extraArgs: str(claude.extraArgs, d.claude.extraArgs),
       defaultMode: oneOf<LaunchMode>(claude.defaultMode, ['continue', 'new'], d.claude.defaultMode),
-      autoStart: bool(claude.autoStart, d.claude.autoStart),
-    },
-    editor: {
-      kind: oneOf<EditorKind>(
-        editor.kind,
-        ['auto', 'vscode', 'cursor', 'system', 'custom'],
-        d.editor.kind,
+      permissionMode: oneOf<PermissionMode>(
+        claude.permissionMode,
+        ['claude-default', 'manual', 'acceptEdits', 'auto', 'plan', 'bypass'],
+        d.claude.permissionMode,
       ),
-      customPath: str(editor.customPath, d.editor.customPath),
+      // 0.1.0 had autoStart; the launch card now asks by default so permissions are a choice.
+      onProjectOpen: oneOf<'ask' | 'start'>(
+        claude.onProjectOpen,
+        ['ask', 'start'],
+        d.claude.onProjectOpen,
+      ),
     },
+    editor: normalizeEditor(editor),
     terminal: {
       fontSize: num(terminal.fontSize, d.terminal.fontSize, 9, 28),
       fontFamily: str(terminal.fontFamily, d.terminal.fontFamily),
+      gpu: bool(terminal.gpu, d.terminal.gpu),
     },
     notifications: { enabled: bool(notifications.enabled, d.notifications.enabled) },
     lastProjectId: typeof r.lastProjectId === 'string' ? r.lastProjectId : null,
+  }
+}
+
+/** 0.1.0 stored 'auto' | 'vscode' | 'cursor'; those map onto 'ask' and detected apps. */
+function normalizeEditor(editor: Record<string, unknown>): Settings['editor'] {
+  const d = DEFAULT_SETTINGS.editor
+  const customPath = str(editor.customPath, d.customPath)
+  if (editor.kind === 'vscode' || editor.kind === 'cursor') {
+    return { kind: 'app', app: editor.kind, customPath }
+  }
+  if (editor.kind === 'auto') return { kind: 'ask', app: '', customPath }
+  return {
+    kind: oneOf<EditorKind>(editor.kind, ['ask', 'app', 'system', 'reveal', 'custom'], d.kind),
+    app: str(editor.app, d.app),
+    customPath,
   }
 }
 

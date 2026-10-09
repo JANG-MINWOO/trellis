@@ -1,6 +1,6 @@
 // Derives turns and agent state from the event ledger. Nothing here is stored (principle: no
 // derived values next to the source).
-import type { EventOf, ToolUse, TrellisEvent } from './types'
+import type { ChangeEntry, EventOf, ToolUse, TrellisEvent } from './types'
 
 export type TurnStatus = 'running' | 'waiting' | 'done' | 'interrupted'
 
@@ -14,13 +14,21 @@ export interface TurnItem {
   type: 'turn'
   key: string
   sessionId: string | null
+  /** The Trellis tab the turn ran in. */
+  terminalId: string | null
   prompt: string
   startedAt: number
   endedAt: number | null
   status: TurnStatus
   tools: ToolEntry[]
-  /** Unique files touched by tools in this turn, in first-touch order. */
+  /** Unique files touched by edit tools in this turn, in first-touch order. */
   files: string[]
+  /**
+   * What git saw change during the turn (edits made through Bash included). Null until the turn
+   * ends, or when the project is not a git repository.
+   */
+  changes: ChangeEntry[] | null
+  changesTruncated: boolean
   lastMessage: string | null
   waitingMessage: string | null
 }
@@ -31,6 +39,7 @@ export interface SessionItem {
   ts: number
   edge: 'start' | 'end'
   sessionId: string | null
+  terminalId: string | null
   detail: string
   model: string | null
 }
@@ -83,6 +92,7 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
           ts: e.ts,
           edge: 'start',
           sessionId: e.sessionId,
+          terminalId: e.terminalId,
           detail: e.data.source,
           model: e.data.model,
         })
@@ -95,6 +105,7 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
           ts: e.ts,
           edge: 'end',
           sessionId: e.sessionId,
+          terminalId: e.terminalId,
           detail: e.data.reason,
           model: null,
         })
@@ -109,12 +120,15 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
           type: 'turn',
           key: e.promptId ?? e.id,
           sessionId: e.sessionId,
+          terminalId: e.terminalId,
           prompt: e.data.prompt,
           startedAt: e.ts,
           endedAt: null,
           status: 'running',
           tools: [],
           files: [],
+          changes: null,
+          changesTruncated: false,
           lastMessage: null,
           waitingMessage: null,
         }
@@ -139,6 +153,14 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
         if (turn && turn.status === 'running' && PERMISSION_NOTIFICATIONS.has(e.data.type)) {
           turn.status = 'waiting'
           turn.waitingMessage = e.data.message
+        }
+        break
+      }
+      case 'turn.changes': {
+        const turn = e.promptId ? turnsByPrompt.get(e.promptId) : undefined
+        if (turn) {
+          turn.changes = e.data.files
+          turn.changesTruncated = e.data.truncated
         }
         break
       }
@@ -171,6 +193,14 @@ function addTool(turn: TurnItem, e: EventOf<'tool.use'> | EventOf<'tool.fail'>):
 }
 
 export type AgentState = 'idle' | 'working' | 'waiting'
+
+/** Files changed in a turn: git's view when known, otherwise what edit tools reported. */
+export function turnFiles(
+  turn: TurnItem,
+): { path: string; status: ChangeEntry['status'] | null }[] {
+  if (turn.changes) return turn.changes.map((c) => ({ path: c.path, status: c.status }))
+  return turn.files.map((path) => ({ path, status: null }))
+}
 
 /** The state of the most recent turn of a session (or of any session when sessionId is null). */
 export function deriveAgentState(

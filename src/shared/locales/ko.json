@@ -5,7 +5,6 @@
     "edit": "수정",
     "more": "더 보기",
     "refresh": "새로 고침",
-    "retry": "다시 시도",
     "save": "저장",
     "showLess": "접기",
     "showMore": "자세히"
@@ -38,7 +37,8 @@
     "window": "윈도우",
     "minimize": "최소화",
     "zoom": "확대/축소",
-    "front": "모두 앞으로 가져오기"
+    "front": "모두 앞으로 가져오기",
+    "claudeNewTab": "새 탭에서 새 대화"
   },
   "dialog": {
     "openFolder": "Trellis에 추가할 프로젝트 폴더를 선택하세요"
@@ -73,7 +73,9 @@
     "recheck": "다시 확인",
     "projectTitle": "첫 프로젝트",
     "projectHint": "Claude와 함께 작업할 폴더를 추가하세요. 건너뛰고 나중에 추가해도 돼요.",
-    "start": "시작하기"
+    "start": "시작하기",
+    "permissionTitle": "Claude 권한 기본값",
+    "permissionHint": "Claude를 시작할 때마다 고를 수 있어요. 여기서는 기본으로 선택될 값만 정해요."
   },
   "projects": {
     "title": "프로젝트",
@@ -96,7 +98,6 @@
     "continue": "이어서 하기",
     "newConversation": "새 대화",
     "stop": "Claude 종료",
-    "stopShell": "셸 종료",
     "restart": "다시 시작",
     "exited": "세션이 종료됐어요 (코드 {{code}})",
     "noProjectTitle": "프로젝트를 열어 주세요",
@@ -107,7 +108,12 @@
     "startFailedTitle": "Claude를 시작하지 못했어요",
     "openClaudeSettings": "Claude Code 설정",
     "startTitle": "Claude Code 시작",
-    "startBody": "지난 대화를 이어서 하거나 새 대화를 시작하세요."
+    "startBody": "권한 방식을 고르고, 지난 대화를 이어서 하거나 새 대화를 시작하세요.",
+    "newTab": "새 탭",
+    "newClaude": "새 Claude 대화",
+    "newShell": "새 셸 열기",
+    "closeTab": "탭 닫기",
+    "confirmClose": "이 탭의 Claude가 실행 중이에요. 탭을 닫으면 Claude도 종료돼요. 대화는 Claude Code에 남아 있어서 나중에 이어서 할 수 있어요."
   },
   "intent": {
     "title": "작업 의도",
@@ -139,7 +145,9 @@
     "sessionResume": "지난 대화 이어서",
     "sessionClear": "대화 비움 (/clear)",
     "sessionCompact": "대화 압축",
-    "sessionEnd": "대화 종료"
+    "sessionEnd": "대화 종료",
+    "allTabs": "모든 탭",
+    "closedTab": "닫힌 탭"
   },
   "changes": {
     "title": "변경",
@@ -211,11 +219,8 @@
     "extraArgsHint": "claude를 실행할 때 덧붙일 인자예요. 예: --model opus",
     "defaultMode": "기본 시작 방식",
     "defaultModeHint": "이전 대화가 없으면 새 대화로 시작해요.",
-    "autoStart": "프로젝트를 열면 자동 시작",
-    "autoStartHint": "프로젝트를 고르면 Claude Code를 바로 실행해요.",
     "editorKind": "파일을 열 편집기",
-    "editorKindHint": "Trellis는 편집기를 따로 두지 않고, 파일을 고르면 여기서 고른 편집기로 열어요.",
-    "editorAuto": "자동 (VS Code → Cursor → 시스템 기본)",
+    "editorKindHint": "Trellis는 편집기를 따로 두지 않고, 파일을 고르면 여기서 고른 앱으로 열어요. 이 컴퓨터에서 찾은 편집기만 보여요.",
     "editorSystem": "시스템 기본 앱",
     "editorCustom": "직접 지정",
     "customPath": "편집기 실행 파일 경로",
@@ -229,11 +234,66 @@
     "decisionsDirHint": "프로젝트 기준 경로예요. 비워 두면 결정 패널을 끕니다. 이미 다른 방식으로 결정을 기록하는 프로젝트라면 비워서 두 벌이 되지 않게 하세요.",
     "recordLanguage": "기록 언어",
     "recordLanguageHint": "Trellis가 이 프로젝트에 남기는 기록에 쓸 언어예요.",
-    "followApp": "앱 언어 따르기"
+    "followApp": "앱 언어 따르기",
+    "permissionMode": "권한 기본값",
+    "onProjectOpen": "프로젝트를 열 때",
+    "onProjectOpenHint": "\"묻기\"는 권한과 이어서/새 대화를 고르는 카드를 띄우고, \"바로 시작\"은 기본값으로 바로 실행해요.",
+    "onProjectOpenAsk": "묻기",
+    "onProjectOpenStart": "바로 시작",
+    "editorAsk": "처음 열 때 묻기",
+    "editorMissing": "{{name}} (찾을 수 없음)",
+    "gpu": "GPU 가속 렌더링",
+    "gpuHint": "켜면 출력이 많을 때 더 빠르지만, 일부 환경에서 화면이 갱신되지 않을 수 있어요. 글자가 안 보이면 끄세요."
   },
   "toast": {
     "editorFailed": "파일을 열지 못했어요. {{message}}",
     "gitInitDone": "git 저장소를 만들었어요.",
     "gitInitFailed": "git 저장소를 만들지 못했어요. {{message}}"
+  },
+  "launch": {
+    "permission": "권한",
+    "continueBusy": "다른 탭에서 Claude가 실행 중이라 \"이어서 하기\"는 쓸 수 없어요. 같은 대화를 두 곳에서 열면 기록이 꼬여요. 새 대화로 시작하세요."
+  },
+  "permission": {
+    "claude-default": {
+      "label": "Claude 설정 따르기",
+      "short": "Claude 설정",
+      "hint": "Trellis는 권한 인자를 넘기지 않아요. ~/.claude/settings.json과 Claude Code 기본값을 따라요."
+    },
+    "manual": {
+      "label": "매번 확인 (manual)",
+      "short": "매번 확인",
+      "hint": "파일 수정이나 명령 실행 전에 매번 확인을 받아요."
+    },
+    "acceptEdits": {
+      "label": "파일 수정 자동 허용 (acceptEdits)",
+      "short": "수정 자동 허용",
+      "hint": "파일 수정은 묻지 않고, 명령 실행은 확인을 받아요."
+    },
+    "auto": {
+      "label": "자동 판단 (auto)",
+      "short": "자동 판단",
+      "hint": "Claude Code가 위험도를 판단해서 필요한 것만 물어봐요."
+    },
+    "plan": {
+      "label": "계획만 (plan)",
+      "short": "계획만",
+      "hint": "파일을 고치지 않고 계획만 세워요. 실행은 승인한 뒤에 해요."
+    },
+    "bypass": {
+      "label": "모든 확인 건너뛰기 (dangerously-skip-permissions)",
+      "short": "모든 확인 건너뜀",
+      "hint": "어떤 작업도 묻지 않고 실행해요. 믿을 수 있는 폴더에서, 결과를 직접 확인할 수 있을 때만 쓰세요."
+    }
+  },
+  "editors": {
+    "title": "어떤 편집기로 열까요?",
+    "description": "{{path}} — 한 번 고르면 다음부터는 묻지 않아요.",
+    "system": "기본 앱으로 열기",
+    "systemHint": "파일 종류에 연결된 앱",
+    "reveal": "탐색기에서 보기",
+    "revealMac": "Finder에서 보기",
+    "revealHint": "파일을 열지 않고 위치만 보여줘요",
+    "changeLater": "설정 → 편집기에서 언제든 바꿀 수 있어요."
   }
 }

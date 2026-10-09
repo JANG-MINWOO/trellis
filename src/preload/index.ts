@@ -29,17 +29,22 @@ const api: TrellisApi = {
     onFsChanged: (cb) => subscribe(Push.projectFsChanged, cb),
   },
   files: { list: (id, relDir) => invoke(Invoke.filesList, id, relDir) },
-  editor: { open: (id, rel) => invoke(Invoke.editorOpen, id, rel) },
+  editor: {
+    open: (id, rel) => invoke(Invoke.editorOpen, id, rel),
+    list: () => invoke(Invoke.editorList),
+  },
   terminal: {
     start: (req) => invoke(Invoke.terminalStart, req),
     write: (terminalId, data) => ipcRenderer.send(Send.terminalWrite, terminalId, data),
     resize: (terminalId, cols, rows) =>
       ipcRenderer.send(Send.terminalResize, terminalId, cols, rows),
     kill: (terminalId) => invoke(Invoke.terminalKill, terminalId),
+    close: (terminalId) => invoke(Invoke.terminalClose, terminalId),
     list: () => invoke(Invoke.terminalList),
     attach: (terminalId) => invoke(Invoke.terminalAttach, terminalId),
     onData: (cb) => subscribe(Push.terminalData, cb),
     onUpdate: (cb) => subscribe(Push.terminalUpdate, cb),
+    onRemoved: (cb) => subscribe(Push.terminalRemoved, cb),
   },
   events: {
     list: (id, limit) => invoke(Invoke.eventsList, id, limit),

@@ -6,7 +6,7 @@ import { existsSync, promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { groupByArea } from '@shared/areas'
-import type { Baseline, ChangeReport } from '@shared/types'
+import type { Baseline, ChangeEntry, ChangeReport } from '@shared/types'
 import { readJson, writeJsonAtomic } from '../../lib/json-file'
 import { KeyedSerialQueue } from '../../lib/serial'
 import { EMPTY_TREE, Git } from './git'
@@ -14,6 +14,8 @@ import { combineChanges } from './git-parse'
 
 const LARGE_UNTRACKED_BYTES = 20 * 1024 * 1024
 const MAX_EXCLUDES = 200
+const MAX_TURN_FILES = 200
+const TURN_START_TTL_MS = 24 * 60 * 60 * 1000
 
 export interface RepoInfo {
   top: string
@@ -28,6 +30,8 @@ interface StoredBaseline {
 
 export class ChangesService {
   private readonly queue = new KeyedSerialQueue()
+  /** Tree at the start of each turn, keyed by "<projectId>:<promptId>". In memory only. */
+  private readonly turnStarts = new Map<string, { tree: string; at: number }>()
 
   constructor(
     /** Resolves once the login-shell environment (and with it git's location) is known. */
@@ -90,30 +94,7 @@ export class ChangesService {
           (await git.tryRun(info.top, ['rev-parse', '--verify', '-q', 'HEAD^{tree}']))?.trim() ||
           EMPTY_TREE
 
-        const pathspec = info.prefix ? ['--', info.prefix] : []
-        const [nameStatus, numstat] = await Promise.all([
-          git.run(info.top, [
-            'diff-tree',
-            '-r',
-            '-z',
-            '--name-status',
-            '-M',
-            base,
-            current,
-            ...pathspec,
-          ]),
-          git.run(info.top, [
-            'diff-tree',
-            '-r',
-            '-z',
-            '--numstat',
-            '-M',
-            base,
-            current,
-            ...pathspec,
-          ]),
-        ])
-        const entries = combineChanges(nameStatus, numstat, info.prefix)
+        const entries = await this.diffTrees(info, base, current)
         const branch =
           (await git.tryRun(info.top, ['symbolic-ref', '--short', '-q', 'HEAD']))?.trim() ||
           (await git.tryRun(info.top, ['rev-parse', '--short', 'HEAD']))?.trim() ||
@@ -136,6 +117,59 @@ export class ChangesService {
         return { kind: 'error', message: (error as Error).message }
       }
     })
+  }
+
+  /**
+   * Snapshot at the start of a turn. Called from the prompt hook before it is answered, so Claude
+   * has not touched anything yet.
+   */
+  async beginTurn(projectId: string, root: string, promptId: string): Promise<void> {
+    const info = await this.repoInfo(root)
+    if (!info) return
+    const tree = await this.snapshotTree(info)
+    const now = Date.now()
+    for (const [key, start] of this.turnStarts) {
+      if (now - start.at > TURN_START_TTL_MS) this.turnStarts.delete(key)
+    }
+    this.turnStarts.set(`${projectId}:${promptId}`, { tree, at: now })
+  }
+
+  /** What changed during the turn, including edits made through Bash. Null if the start is unknown. */
+  endTurn(
+    projectId: string,
+    root: string,
+    promptId: string,
+  ): Promise<{ files: ChangeEntry[]; truncated: boolean } | null> {
+    return this.queue.run(projectId, async () => {
+      const key = `${projectId}:${promptId}`
+      const start = this.turnStarts.get(key)
+      if (!start) return null
+      this.turnStarts.delete(key)
+      const info = await this.repoInfo(root)
+      if (!info) return null
+      const entries = await this.diffTrees(info, start.tree, await this.snapshotTree(info))
+      return { files: entries.slice(0, MAX_TURN_FILES), truncated: entries.length > MAX_TURN_FILES }
+    })
+  }
+
+  private async diffTrees(info: RepoInfo, base: string, current: string): Promise<ChangeEntry[]> {
+    const git = (await this.git())!
+    const pathspec = info.prefix ? ['--', info.prefix] : []
+    const args = (format: string): string[] => [
+      'diff-tree',
+      '-r',
+      '-z',
+      format,
+      '-M',
+      base,
+      current,
+      ...pathspec,
+    ]
+    const [nameStatus, numstat] = await Promise.all([
+      git.run(info.top, args('--name-status')),
+      git.run(info.top, args('--numstat')),
+    ])
+    return combineChanges(nameStatus, numstat, info.prefix)
   }
 
   async initRepo(root: string): Promise<{ ok: boolean; message?: string }> {

@@ -1,24 +1,39 @@
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ListTree, Play, Square, Target } from 'lucide-react'
 import type { TimelineItem } from '@shared/timeline'
 import { EmptyState } from '../../components/ui'
-import { api } from '../../lib/api'
+import { cn } from '../../lib/cn'
 import { clockTime, relativeTime } from '../../lib/format'
 import { useTimeline } from '../../state/derived'
 import { useActiveProject, useStore } from '../../state/store'
+import { tabLabel } from '../terminal'
 import { TurnCard } from './TurnCard'
 
 export function TimelinePanel() {
   const { t } = useTranslation()
   const project = useActiveProject()
   const items = useTimeline(project?.id ?? null)
-  const toast = useStore((s) => s.toast)
+  const open = useStore((s) => s.openFile)
+  const terminals = useStore((s) => s.terminals)
+  const [filter, setFilter] = useState<string>('all')
+
+  // Tabs that have turns, in order of first appearance; with more than one, offer a filter.
+  const tabs = useMemo(() => {
+    const ids: string[] = []
+    for (const item of items) {
+      if (item.type === 'turn' && item.terminalId && !ids.includes(item.terminalId))
+        ids.push(item.terminalId)
+    }
+    return ids
+  }, [items])
+  const active = tabs.includes(filter) ? filter : 'all'
+  const visible =
+    active === 'all' ? items : items.filter((i) => i.type === 'intent' || i.terminalId === active)
+
   if (!project) return null
 
-  const openFile = async (path: string): Promise<void> => {
-    const result = await api.editor.open(project.id, path)
-    if (!result.ok) toast('error', t('toast.editorFailed', { message: result.message ?? '' }))
-  }
+  const openFile = (path: string): Promise<void> => open(project.id, path)
 
   if (items.length === 0) {
     return (
@@ -33,7 +48,37 @@ export function TimelinePanel() {
 
   return (
     <div className="space-y-2 p-3" data-testid="timeline">
-      {[...items].reverse().map((item) => (
+      {tabs.length > 1 && (
+        <div className="flex flex-wrap gap-1 pb-1" role="radiogroup">
+          {['all', ...tabs].map((id) => {
+            const terminal = terminals[id]
+            const label =
+              id === 'all'
+                ? t('timeline.allTabs')
+                : terminal
+                  ? tabLabel(t, terminal)
+                  : t('timeline.closedTab')
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={active === id}
+                onClick={() => setFilter(id)}
+                className={cn(
+                  'h-6 rounded-full border px-2.5 text-2xs font-medium',
+                  active === id
+                    ? 'border-accent/50 bg-accent-soft text-accent'
+                    : 'border-border text-fg-muted hover:text-fg',
+                )}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {[...visible].reverse().map((item) => (
         <Item key={item.key} item={item} onOpenFile={openFile} />
       ))}
     </div>

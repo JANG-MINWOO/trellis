@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildTimeline, currentIntent, deriveAgentState, type TurnItem } from './timeline'
+import {
+  buildTimeline,
+  currentIntent,
+  deriveAgentState,
+  turnFiles,
+  type TurnItem,
+} from './timeline'
 import type { TrellisEvent } from './types'
 
 let seq = 0
@@ -105,6 +111,40 @@ describe('buildTimeline', () => {
     expect((items[0] as TurnItem).status).toBe('interrupted')
     expect((items[1] as TurnItem).status).toBe('interrupted')
     expect(items[2]?.type).toBe('session')
+  })
+
+  it('attaches git-observed changes to their turn and prefers them over tool reports', () => {
+    const items = buildTimeline([
+      ev({ kind: 'prompt.submit', ts: 1, sessionId: 's', promptId: 'p', data: { prompt: 'x' } }),
+      ev({ kind: 'tool.use', ts: 2, sessionId: 's', promptId: 'p', data: tool(['a.ts']) }),
+      ev({ kind: 'turn.stop', ts: 3, sessionId: 's', promptId: 'p', data: { lastMessage: '' } }),
+      ev({
+        kind: 'turn.changes',
+        ts: 4,
+        sessionId: 's',
+        promptId: 'p',
+        data: {
+          truncated: false,
+          files: [
+            { path: 'a.ts', oldPath: null, status: 'M', additions: 1, deletions: 0, binary: false },
+            {
+              path: 'log.md',
+              oldPath: null,
+              status: 'A',
+              additions: 3,
+              deletions: 0,
+              binary: false,
+            },
+          ],
+        },
+      }),
+    ])
+    const turn = items[0] as TurnItem
+    expect(turn.terminalId).toBe('t1')
+    expect(turnFiles(turn)).toEqual([
+      { path: 'a.ts', status: 'M' },
+      { path: 'log.md', status: 'A' },
+    ])
   })
 
   it('sorts events by time before building', () => {

@@ -31,6 +31,7 @@ export class PtyManager extends EventEmitter<{
   data: [TerminalDataMessage]
   update: [TerminalInfo]
   exit: [TerminalInfo, string]
+  removed: [string]
 }> {
   private sessions = new Map<string, Session>()
 
@@ -158,7 +159,16 @@ export class PtyManager extends EventEmitter<{
     this.emit('update', { ...session.info })
   }
 
-  /** Kills the process and forgets the terminal. */
+  /** Ends the process but keeps the terminal, so its tab can show how to restart. */
+  kill(id: string): void {
+    try {
+      this.sessions.get(id)?.proc?.kill()
+    } catch {
+      // already exited
+    }
+  }
+
+  /** Kills the process, forgets the terminal and tells listeners it is gone. */
   dispose(id: string): void {
     const session = this.sessions.get(id)
     if (!session) return
@@ -170,6 +180,7 @@ export class PtyManager extends EventEmitter<{
     }
     if (session.flushTimer) clearTimeout(session.flushTimer)
     this.sessions.delete(id)
+    this.emit('removed', id)
   }
 
   get(id: string): TerminalInfo | null {

@@ -16,6 +16,7 @@ import { registerIpc } from './ipc'
 import { buildAppMenu } from './menu'
 import { resolveShellEnv } from './platform/shell-env'
 import { configureUserData } from './platform/user-data'
+import { newId } from './lib/ids'
 import { findExecutable } from './platform/which'
 import { applyTitleBarTheme, createMainWindow } from './window'
 
@@ -46,19 +47,59 @@ async function bootstrap(): Promise<void> {
   nativeTheme.themeSource = settings.get().theme
   const registry = await ProjectRegistry.load(path.join(dataDir, 'projects.json'))
   const events = new EventStore(projectsDir)
-  const bridge = new BridgeServer()
-  await bridge.start()
   const adapter = claudeCodeAdapter
-  const bridgeConfigFile = await adapter.prepareBridge(
-    path.join(dataDir, 'agents', adapter.id),
-    bridge.url,
-  )
   const ptys = new PtyManager()
   const changes = new ChangesService(git, projectsDir)
   const watcher = new ProjectWatcher()
   let mainWindow: BrowserWindow | null = null
+  // terminals is created below; the bridge only needs it once payloads arrive.
+  let terminals: TerminalService | null = null
 
-  const terminals = new TerminalService({
+  const bridge = new BridgeServer(async ({ raw, projectId, terminalId, receivedAt }) => {
+    const project = registry.get(projectId)
+    if (!project) return
+    const event = adapter.normalize(raw, {
+      projectId,
+      projectRoot: project.path,
+      terminalId,
+      now: receivedAt,
+    })
+    if (!event) return
+    terminals?.noteAgentEvent(terminalId, event.sessionId)
+    // Before the prompt hook is answered (Claude waits for it), so the snapshot predates the turn.
+    if (event.kind === 'prompt.submit' && event.promptId) {
+      await changes.beginTurn(project.id, project.path, event.promptId).catch(() => undefined)
+    }
+    await events.append(event)
+    notifyForEvent(event, project.name, settings.get(), mainWindow)
+    if (event.kind === 'turn.stop' && event.promptId) {
+      const promptId = event.promptId
+      void changes
+        .endTurn(project.id, project.path, promptId)
+        .then((result) =>
+          result
+            ? events.append({
+                id: newId(),
+                ts: Date.now(),
+                projectId: project.id,
+                agent: event.agent,
+                sessionId: event.sessionId,
+                promptId,
+                terminalId: event.terminalId,
+                kind: 'turn.changes',
+                data: result,
+              })
+            : undefined,
+        )
+        .catch(() => undefined)
+    }
+  })
+  await bridge.start()
+  const bridgeConfigFile = await adapter.prepareBridge(
+    path.join(dataDir, 'agents', adapter.id),
+    bridge.url,
+  )
+  const terminalService = new TerminalService({
     ptys,
     registry,
     adapter,
@@ -67,6 +108,7 @@ async function bootstrap(): Promise<void> {
     bridge: () => ({ token: bridge.token, configFile: bridgeConfigFile }),
     beforeClaudeLaunch: (projectId, root) => changes.snapshotSession(projectId, root),
   })
+  terminals = terminalService
 
   const ctx: AppContext = {
     dataDir,
@@ -76,7 +118,7 @@ async function bootstrap(): Promise<void> {
     bridge,
     adapter,
     ptys,
-    terminals,
+    terminals: terminalService,
     changes,
     watcher,
     env,
@@ -89,24 +131,10 @@ async function bootstrap(): Promise<void> {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
   }
 
-  bridge.on('payload', ({ raw, projectId, terminalId, receivedAt }) => {
-    const project = registry.get(projectId)
-    if (!project) return
-    const event = adapter.normalize(raw, {
-      projectId,
-      projectRoot: project.path,
-      terminalId,
-      now: receivedAt,
-    })
-    if (!event) return
-    terminals.noteAgentEvent(terminalId, event.sessionId)
-    void events
-      .append(event)
-      .then(() => notifyForEvent(event, project.name, settings.get(), mainWindow))
-  })
   events.on('event', (event) => send(Push.event, event))
   ptys.on('data', (message) => send(Push.terminalData, message))
   ptys.on('update', (info) => send(Push.terminalUpdate, info))
+  ptys.on('removed', (terminalId) => send(Push.terminalRemoved, terminalId))
   watcher.on('changed', (projectId) => send(Push.projectFsChanged, projectId))
 
   const rebuildMenu = (): void =>

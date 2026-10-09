@@ -23,7 +23,7 @@ test('browse an existing project without starting Claude', async () => {
   try {
     const win = await app.firstWindow()
     await win.evaluate(() =>
-      window.trellis.settings.update({ language: 'ko', claude: { autoStart: false } }),
+      window.trellis.settings.update({ language: 'ko', claude: { onProjectOpen: 'ask' } }),
     )
     await win.getByRole('button', { name: '폴더 열기' }).first().click()
     await expect(win.getByText('Claude Code 시작')).toBeVisible({ timeout: 20_000 })

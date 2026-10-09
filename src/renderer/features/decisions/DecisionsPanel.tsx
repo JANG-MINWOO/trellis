@@ -19,7 +19,7 @@ export function DecisionsPanel() {
   const project = useActiveProject()
   const fsTick = useStore((s) => (project ? (s.fsTick[project.id] ?? 0) : 0))
   const openSettings = useStore((s) => s.openSettings)
-  const toast = useStore((s) => s.toast)
+  const openFile = useStore((s) => s.openFile)
   const [list, setList] = useState<DecisionList | null>(null)
   const projectId = project?.id
   const decisionsDir = project?.decisionsDir
@@ -98,11 +98,7 @@ export function DecisionsPanel() {
                 type="button"
                 className="w-full rounded-md px-2 py-2 text-left hover:bg-surface-2"
                 title={doc.path}
-                onClick={async () => {
-                  const result = await api.editor.open(project.id, doc.path)
-                  if (!result.ok)
-                    toast('error', t('toast.editorFailed', { message: result.message ?? '' }))
-                }}
+                onClick={() => void openFile(project.id, doc.path)}
               >
                 <div className="flex items-start gap-2">
                   <span className="min-w-0 flex-1 text-xs leading-snug font-medium text-fg">

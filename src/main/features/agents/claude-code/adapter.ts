@@ -2,6 +2,7 @@ import { promises as fs, realpathSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { getEnv } from '../../../platform/env'
+import type { PermissionMode } from '@shared/types'
 import type { AgentAdapter, LaunchRequest } from '../types'
 import { BRIDGE_ENV, buildHookSettings } from './hook-settings'
 import { normalizeClaudeHook } from './normalize'
@@ -27,6 +28,18 @@ const SESSION_MARKER_PREFIXES = [
 
 /** Flags that choose which conversation to open; if the user passes one we do not add ours. */
 const SESSION_FLAGS = ['--continue', '-c', '--resume', '-r', '--session-id', '--fork-session']
+/** Same for permissions. */
+const PERMISSION_FLAGS = [
+  '--permission-mode',
+  '--dangerously-skip-permissions',
+  '--allow-dangerously-skip-permissions',
+]
+
+function permissionArgs(mode: PermissionMode): string[] {
+  if (mode === 'claude-default') return []
+  if (mode === 'bypass') return ['--dangerously-skip-permissions']
+  return ['--permission-mode', mode]
+}
 
 export const claudeCodeAdapter: AgentAdapter = {
   id: 'claude-code',
@@ -67,11 +80,13 @@ export const claudeCodeAdapter: AgentAdapter = {
 
   launchArgs(request: LaunchRequest) {
     const args = ['--settings', request.bridgeConfigFile]
-    const userPicksSession = request.extraArgs.some((a) => SESSION_FLAGS.includes(a.split('=')[0]!))
-    if (!userPicksSession) {
+    const userSets = (flags: string[]): boolean =>
+      request.extraArgs.some((a) => flags.includes(a.split('=')[0]!))
+    if (!userSets(SESSION_FLAGS)) {
       if (request.mode === 'continue') args.push('--continue')
       else if (request.sessionId) args.push('--session-id', request.sessionId)
     }
+    if (!userSets(PERMISSION_FLAGS)) args.push(...permissionArgs(request.permissionMode))
     return [...args, ...request.extraArgs]
   },
 

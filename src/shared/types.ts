@@ -3,8 +3,23 @@
 export type Language = 'ko' | 'en'
 export type ThemePreference = 'system' | 'dark' | 'light'
 export type LaunchMode = 'continue' | 'new'
-export type EditorKind = 'auto' | 'vscode' | 'cursor' | 'system' | 'custom'
+/**
+ * How Claude handles permission prompts when Trellis starts it. 'claude-default' passes nothing
+ * and lets the user's Claude Code settings decide; 'bypass' is --dangerously-skip-permissions.
+ */
+export type PermissionMode =
+  'claude-default' | 'manual' | 'acceptEdits' | 'auto' | 'plan' | 'bypass'
+/**
+ * 'ask' asks once which editor to use; 'app' uses a detected editor (Settings.editor.app);
+ * 'reveal' shows the file in Finder/Explorer instead of opening it.
+ */
+export type EditorKind = 'ask' | 'app' | 'system' | 'reveal' | 'custom'
 export type AgentId = 'claude-code'
+
+export interface EditorApp {
+  id: string
+  name: string
+}
 
 export interface Settings {
   /** null until the user picks a language on first run. */
@@ -16,11 +31,21 @@ export interface Settings {
     /** Extra CLI arguments, parsed like a shell command line. */
     extraArgs: string
     defaultMode: LaunchMode
-    /** Start Claude automatically when a project is opened. */
-    autoStart: boolean
+    /** Permission mode preselected when a session starts (changeable per launch). */
+    permissionMode: PermissionMode
+    /**
+     * What happens when a project opens: 'ask' shows the launch card (choose permissions and
+     * continue/new), 'start' launches right away with the defaults above.
+     */
+    onProjectOpen: 'ask' | 'start'
   }
-  editor: { kind: EditorKind; customPath: string }
-  terminal: { fontSize: number; fontFamily: string }
+  editor: { kind: EditorKind; app: string; customPath: string }
+  terminal: {
+    fontSize: number
+    fontFamily: string
+    /** WebGL rendering. Off by default: the DOM renderer is slower but never fails to repaint. */
+    gpu: boolean
+  }
   notifications: { enabled: boolean }
   lastProjectId: string | null
 }
@@ -62,6 +87,7 @@ export type EventKind =
   | 'tool.use'
   | 'tool.fail'
   | 'turn.stop'
+  | 'turn.changes'
   | 'notification'
   | 'intent.set'
 
@@ -91,6 +117,8 @@ export type TrellisEvent =
   | (EventBase & { kind: 'tool.use'; data: ToolUse })
   | (EventBase & { kind: 'tool.fail'; data: ToolUse & { error: string } })
   | (EventBase & { kind: 'turn.stop'; data: { lastMessage: string } })
+  /** What git saw change between the prompt and the end of the turn (includes Bash edits). */
+  | (EventBase & { kind: 'turn.changes'; data: { files: ChangeEntry[]; truncated: boolean } })
   | (EventBase & { kind: 'notification'; data: { type: string; message: string } })
   | (EventBase & { kind: 'intent.set'; data: { text: string } })
 
@@ -106,6 +134,10 @@ export interface TerminalInfo {
   projectId: string
   kind: TerminalKind
   title: string
+  /** 1-based position among terminals of the same kind in the project ("Claude 2"). */
+  index: number
+  /** Permission mode the current process was started with (claude terminals only). */
+  permissionMode: PermissionMode | null
   /** Claude session id when known (set for new sessions, learned from events otherwise). */
   sessionId: string | null
   startedAt: number
@@ -117,13 +149,22 @@ export interface TerminalStartRequest {
   projectId: string
   kind: TerminalKind
   mode?: LaunchMode
+  permissionMode?: PermissionMode
+  /** Restart this terminal (same tab). */
+  terminalId?: string
+  /** Open an additional tab instead of reusing the project's first terminal of this kind. */
+  newTab?: boolean
   cols: number
   rows: number
 }
 
 export type TerminalStartResult =
   | { ok: true; terminal: TerminalInfo }
-  | { ok: false; reason: 'agent-not-found' | 'project-missing' | 'spawn-failed'; message: string }
+  | {
+      ok: false
+      reason: 'agent-not-found' | 'project-missing' | 'spawn-failed' | 'session-in-use'
+      message: string
+    }
 
 // ---------------------------------------------------------------------------------------------
 // Changes (computed from git, never from hook events)
@@ -212,6 +253,8 @@ export interface EnvironmentStatus {
 
 export interface AppInfo {
   version: string
+  /** Version plus git commit of the build, e.g. "0.1.0+b5f7716" (dirty builds end in "-dirty"). */
+  build: string
   platform: 'darwin' | 'win32' | 'linux'
   isDev: boolean
   locale: string

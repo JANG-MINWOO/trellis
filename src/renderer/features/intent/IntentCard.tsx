@@ -16,7 +16,7 @@ export function IntentCard() {
   const project = useActiveProject()
   const events = useStore((s) => (project ? s.events[project.id] : undefined))
   const toast = useStore((s) => s.toast)
-  const setActiveKind = useStore((s) => s.setActiveKind)
+  const setActiveTab = useStore((s) => s.setActiveTab)
   const claude = useClaudeTerminal(project?.id ?? null)
   const intent = useMemo(() => (events ? currentIntent(events) : null), [events])
   const [editing, setEditing] = useState(false)
@@ -38,7 +38,7 @@ export function IntentCard() {
     setEditing(false)
     if (andPaste) {
       if (claude?.running) {
-        setActiveKind(project.id, 'claude')
+        setActiveTab(project.id, claude.id)
         pasteIntoTerminal(claude.id, text)
       } else {
         toast('info', t('intent.noClaude'))

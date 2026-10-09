@@ -1,7 +1,8 @@
 // Local HTTP endpoint that receives agent hook payloads (ADR-0003). Bound to 127.0.0.1 and
 // guarded by a random token; replies 200 with an empty body, which Claude Code treats as a no-op.
+// The reply waits (briefly) for the handler, so work done for a prompt hook — like the turn's git
+// snapshot — happens before Claude starts acting on the prompt.
 import { randomBytes, timingSafeEqual } from 'node:crypto'
-import { EventEmitter } from 'node:events'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 
@@ -14,17 +15,21 @@ export interface BridgePayload {
   receivedAt: number
 }
 
-export class BridgeServer extends EventEmitter<{ payload: [BridgePayload] }> {
+export type BridgeHandler = (payload: BridgePayload) => Promise<void>
+
+export class BridgeServer {
   readonly token = randomBytes(24).toString('hex')
   private server: http.Server | null = null
   private port = 0
 
+  constructor(
+    private readonly handler: BridgeHandler,
+    /** Longest a hook waits for the handler; Claude never blocks longer than this on Trellis. */
+    private readonly ackTimeoutMs = 1500,
+  ) {}
+
   get url(): string {
     return `http://127.0.0.1:${this.port}/events`
-  }
-
-  get listening(): boolean {
-    return this.server?.listening ?? false
   }
 
   start(): Promise<void> {
@@ -50,6 +55,7 @@ export class BridgeServer extends EventEmitter<{ payload: [BridgePayload] }> {
 
   private handle(req: http.IncomingMessage, res: http.ServerResponse): void {
     const reply = (status: number): void => {
+      if (res.headersSent) return
       res.writeHead(status, { 'Content-Length': '0' })
       res.end()
     }
@@ -69,17 +75,20 @@ export class BridgeServer extends EventEmitter<{ payload: [BridgePayload] }> {
     })
     req.on('end', () => {
       if (size > MAX_BODY) return
-      reply(200)
       const projectId = String(req.headers['x-trellis-project'] ?? '')
-      if (!projectId) return
       let raw: unknown
       try {
         raw = JSON.parse(Buffer.concat(chunks).toString('utf8'))
       } catch {
-        return
+        return reply(200)
       }
+      if (!projectId) return reply(200)
       const terminalId = String(req.headers['x-trellis-terminal'] ?? '') || null
-      this.emit('payload', { raw, projectId, terminalId, receivedAt: Date.now() })
+      const work = this.handler({ raw, projectId, terminalId, receivedAt: Date.now() }).catch(
+        () => undefined,
+      )
+      const timeout = new Promise((resolve) => setTimeout(resolve, this.ackTimeoutMs))
+      void Promise.race([work, timeout]).then(() => reply(200))
     })
   }
 }

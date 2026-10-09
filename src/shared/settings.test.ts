@@ -19,7 +19,18 @@ describe('normalizeSettings', () => {
     })
     expect(s.theme).toBe(DEFAULT_SETTINGS.theme)
     expect(s.terminal.fontSize).toBe(28)
-    expect(s.editor.kind).toBe('auto')
+    expect(s.editor.kind).toBe('ask')
+  })
+
+  it('migrates 0.1.0 editor values', () => {
+    expect(normalizeSettings({ editor: { kind: 'vscode' } }).editor).toEqual({
+      kind: 'app',
+      app: 'vscode',
+      customPath: '',
+    })
+    expect(normalizeSettings({ editor: { kind: 'auto' } }).editor.kind).toBe('ask')
+    expect(normalizeSettings({ claude: {} }).claude.permissionMode).toBe('claude-default')
+    expect(normalizeSettings({ terminal: {} }).terminal.gpu).toBe(false)
   })
 })
 

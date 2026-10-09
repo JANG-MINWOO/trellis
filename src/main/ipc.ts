@@ -15,6 +15,7 @@ import { checkEnvironment } from './features/environment'
 import { listDirectory } from './features/files'
 import { computeHealth } from './features/health'
 import { newId } from './lib/ids'
+import { detectEditors } from './platform/editors'
 import { currentPlatform } from './platform/os'
 import { resolveInsideProject } from './platform/paths'
 
@@ -32,6 +33,7 @@ export function registerIpc(ctx: AppContext): void {
 
   handle(Invoke.appInfo, () => ({
     version: app.getVersion(),
+    build: __TRELLIS_BUILD__,
     platform: currentPlatform(),
     isDev: !app.isPackaged,
     locale: app.getLocale(),
@@ -94,12 +96,14 @@ export function registerIpc(ctx: AppContext): void {
     return listDirectory(p.path, asString(relDir), await ctx.git(), inRepo)
   })
 
+  handle(Invoke.editorList, async () => detectEditors(await ctx.env()))
   handle(Invoke.editorOpen, async (id, rel) =>
     openInEditor(project(id).path, asString(rel), ctx.settings.get(), await ctx.env()),
   )
 
   handle(Invoke.terminalStart, (req) => ctx.terminals.start(req as TerminalStartRequest))
-  handle(Invoke.terminalKill, (terminalId) => ctx.ptys.dispose(asString(terminalId)))
+  handle(Invoke.terminalKill, (terminalId) => ctx.ptys.kill(asString(terminalId)))
+  handle(Invoke.terminalClose, (terminalId) => ctx.ptys.dispose(asString(terminalId)))
   handle(Invoke.terminalList, () => ctx.ptys.list())
   handle(Invoke.terminalAttach, (terminalId) => ctx.ptys.attach(asString(terminalId)))
   ipcMain.on(Send.terminalWrite, (_e, terminalId: unknown, data: unknown) => {

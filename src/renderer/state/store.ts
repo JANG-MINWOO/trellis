@@ -6,6 +6,7 @@ import type {
   Baseline,
   ChangeReport,
   LaunchMode,
+  PermissionMode,
   ProjectView,
   Settings,
   SettingsPatch,
@@ -14,7 +15,7 @@ import type {
   TerminalStartResult,
   TrellisEvent,
 } from '@shared/types'
-import { setLanguage } from '../i18n'
+import i18n, { setLanguage } from '../i18n'
 import { api } from '../lib/api'
 
 export type RightTab = 'timeline' | 'changes' | 'decisions' | 'health'
@@ -28,6 +29,15 @@ export interface Toast {
 
 type StartError = Extract<TerminalStartResult, { ok: false }>
 
+export interface StartOptions {
+  mode?: LaunchMode
+  permissionMode?: PermissionMode
+  /** Restart this tab instead of picking one. */
+  terminalId?: string
+  /** Open another tab. */
+  newTab?: boolean
+}
+
 interface State {
   booted: boolean
   isDark: boolean
@@ -37,7 +47,8 @@ interface State {
   activeProjectId: string | null
   events: Record<string, TrellisEvent[]>
   terminals: Record<string, TerminalInfo>
-  activeKind: Record<string, TerminalKind>
+  /** Selected tab (terminal id) per project. */
+  activeTab: Record<string, string | null>
   startErrors: Record<string, StartError | undefined>
   changes: Record<string, ChangeReport | undefined>
   changesLoading: Record<string, boolean>
@@ -47,6 +58,8 @@ interface State {
   settingsOpen: boolean
   settingsSection: SettingsSection
   toasts: Toast[]
+  /** Set when a file should open but no editor has been chosen yet. */
+  editorChooser: { projectId: string; path: string } | null
   /** Bumped when the user asks to collapse/expand side panels from the menu or title bar. */
   panelToggle: { side: 'left' | 'right'; n: number } | null
 }
@@ -60,13 +73,12 @@ interface Actions {
   addProject(): Promise<void>
   removeProject(id: string): Promise<void>
   loadEvents(projectId: string): Promise<void>
-  startTerminal(
-    projectId: string,
-    kind: TerminalKind,
-    mode?: LaunchMode,
-    size?: { cols: number; rows: number },
-  ): Promise<void>
-  setActiveKind(projectId: string, kind: TerminalKind): void
+  startTerminal(projectId: string, kind: TerminalKind, options?: StartOptions): Promise<void>
+  setActiveTab(projectId: string, terminalId: string | null): void
+  closeTerminal(terminalId: string): Promise<void>
+  /** Opens a file in the chosen editor, asking once which editor that is. */
+  openFile(projectId: string, path: string): Promise<void>
+  closeEditorChooser(): void
   refreshChanges(projectId: string, immediate?: boolean): void
   setBaseline(baseline: Baseline): void
   setRightTab(tab: RightTab): void
@@ -90,7 +102,7 @@ export const useStore = create<State & Actions>()((set, get) => ({
   activeProjectId: null,
   events: {},
   terminals: {},
-  activeKind: {},
+  activeTab: {},
   startErrors: {},
   changes: {},
   changesLoading: {},
@@ -100,6 +112,7 @@ export const useStore = create<State & Actions>()((set, get) => ({
   settingsOpen: false,
   settingsSection: 'general',
   toasts: [],
+  editorChooser: null,
   panelToggle: null,
 
   async boot() {
@@ -131,12 +144,27 @@ export const useStore = create<State & Actions>()((set, get) => ({
       api.terminal.onUpdate((info) =>
         set((s) => ({ terminals: { ...s.terminals, [info.id]: info } })),
       ),
+      api.terminal.onRemoved((terminalId) =>
+        set((s) => {
+          const gone = s.terminals[terminalId]
+          const terminals = { ...s.terminals }
+          delete terminals[terminalId]
+          if (!gone || s.activeTab[gone.projectId] !== terminalId) return { terminals }
+          const next = pickTab(Object.values(terminals), gone.projectId)
+          return { terminals, activeTab: { ...s.activeTab, [gone.projectId]: next } }
+        }),
+      ),
       api.events.onEvent((event) => {
         set((s) => {
           const list = s.events[event.projectId]
           return list ? { events: { ...s.events, [event.projectId]: [...list, event] } } : {}
         })
-        if (event.kind === 'tool.use' || event.kind === 'turn.stop' || event.kind === 'tool.fail') {
+        if (
+          event.kind === 'tool.use' ||
+          event.kind === 'turn.stop' ||
+          event.kind === 'tool.fail' ||
+          event.kind === 'turn.changes'
+        ) {
           get().refreshChanges(event.projectId)
         }
       }),
@@ -171,7 +199,10 @@ export const useStore = create<State & Actions>()((set, get) => ({
     const hasClaude = Object.values(get().terminals).some(
       (t) => t.projectId === id && t.kind === 'claude',
     )
-    if (settings?.claude.autoStart && !hasClaude) await get().startTerminal(id, 'claude')
+    // 'ask' leaves the launch card up so permissions and continue/new are a conscious choice.
+    if (settings?.claude.onProjectOpen === 'start' && !hasClaude) {
+      await get().startTerminal(id, 'claude')
+    }
   },
 
   async addProject() {
@@ -197,20 +228,15 @@ export const useStore = create<State & Actions>()((set, get) => ({
     set((s) => ({ events: { ...s.events, [projectId]: events } }))
   },
 
-  async startTerminal(projectId, kind, mode, size = DEFAULT_SIZE) {
-    set((s) => ({
-      activeKind: { ...s.activeKind, [projectId]: kind },
-      startErrors: kind === 'claude' ? { ...s.startErrors, [projectId]: undefined } : s.startErrors,
-    }))
-    const result = await api.terminal.start({
-      projectId,
-      kind,
-      mode,
-      cols: size.cols,
-      rows: size.rows,
-    })
+  async startTerminal(projectId, kind, options = {}) {
+    if (kind === 'claude')
+      set((s) => ({ startErrors: { ...s.startErrors, [projectId]: undefined } }))
+    const result = await api.terminal.start({ projectId, kind, ...options, ...DEFAULT_SIZE })
     if (result.ok) {
-      set((s) => ({ terminals: { ...s.terminals, [result.terminal.id]: result.terminal } }))
+      set((s) => ({
+        terminals: { ...s.terminals, [result.terminal.id]: result.terminal },
+        activeTab: { ...s.activeTab, [projectId]: result.terminal.id },
+      }))
     } else if (kind === 'claude') {
       set((s) => ({ startErrors: { ...s.startErrors, [projectId]: result } }))
     } else {
@@ -218,8 +244,26 @@ export const useStore = create<State & Actions>()((set, get) => ({
     }
   },
 
-  setActiveKind(projectId, kind) {
-    set((s) => ({ activeKind: { ...s.activeKind, [projectId]: kind } }))
+  setActiveTab(projectId, terminalId) {
+    set((s) => ({ activeTab: { ...s.activeTab, [projectId]: terminalId } }))
+  },
+
+  async closeTerminal(terminalId) {
+    await api.terminal.close(terminalId)
+  },
+
+  async openFile(projectId, path) {
+    const result = await api.editor.open(projectId, path)
+    if (result.ok) return
+    if (result.message === 'ask' || result.message === 'editor-missing') {
+      set({ editorChooser: { projectId, path } })
+    } else {
+      get().toast('error', i18n.t('toast.editorFailed', { message: result.message ?? '' }))
+    }
+  },
+
+  closeEditorChooser() {
+    set({ editorChooser: null })
   },
 
   refreshChanges(projectId, immediate = false) {
@@ -274,6 +318,14 @@ export const useStore = create<State & Actions>()((set, get) => ({
     set((s) => ({ panelToggle: { side, n: (s.panelToggle?.n ?? 0) + 1 } }))
   },
 }))
+
+/** The tab to show for a project: Claude tabs first, then shells, by position. */
+export function pickTab(terminals: TerminalInfo[], projectId: string): string | null {
+  const own = terminals
+    .filter((t) => t.projectId === projectId)
+    .sort((a, b) => (a.kind === b.kind ? a.index - b.index : a.kind === 'claude' ? -1 : 1))
+  return own[0]?.id ?? null
+}
 
 /** Convenience selectors that return stable references. */
 export const useActiveProject = (): ProjectView | null =>

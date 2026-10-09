@@ -7,12 +7,15 @@ import type {
   Language,
   LaunchMode,
   ThemePreference,
+  EditorApp,
+  PermissionMode,
 } from '@shared/types'
 import { Button, Dialog, FieldRow, Input, Segmented, Select, Switch } from '../../components/ui'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { shortenHome } from '../../lib/format'
 import { useActiveProject, useStore, type SettingsSection } from '../../state/store'
+import { PERMISSION_MODES } from '../terminal'
 
 /** Text input that saves on blur or Enter, not on every keystroke. */
 function CommitInput({
@@ -56,6 +59,11 @@ export function SettingsDialog() {
   const refreshProjects = useStore((s) => s.refreshProjects)
   const project = useActiveProject()
   const [env, setEnv] = useState<EnvironmentStatus | null>(null)
+  const [editors, setEditors] = useState<EditorApp[] | null>(null)
+
+  useEffect(() => {
+    if (open && section === 'editor') void api.editor.list().then(setEditors)
+  }, [open, section])
 
   useEffect(() => {
     if (open && (section === 'claude' || section === 'general'))
@@ -151,7 +159,7 @@ export function SettingsDialog() {
               <FieldRow label={t('settings.about')}>
                 <div className="space-y-1 text-xs text-fg-muted">
                   <div>
-                    Trellis {appInfo?.version}
+                    Trellis {appInfo?.build}
                     {appInfo?.isDev ? ' (dev)' : ''}
                   </div>
                   {env && (
@@ -209,11 +217,35 @@ export function SettingsDialog() {
                   ]}
                 />
               </FieldRow>
-              <FieldRow label={t('settings.autoStart')} hint={t('settings.autoStartHint')} inline>
-                <Switch
-                  label={t('settings.autoStart')}
-                  checked={settings.claude.autoStart}
-                  onCheckedChange={(autoStart) => void update({ claude: { autoStart } })}
+              <FieldRow
+                label={t('settings.permissionMode')}
+                hint={t(`permission.${settings.claude.permissionMode}.hint`)}
+              >
+                <Select
+                  value={settings.claude.permissionMode}
+                  onChange={(e) =>
+                    void update({ claude: { permissionMode: e.target.value as PermissionMode } })
+                  }
+                >
+                  {PERMISSION_MODES.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {t(`permission.${mode}.label`)}
+                    </option>
+                  ))}
+                </Select>
+              </FieldRow>
+              <FieldRow
+                label={t('settings.onProjectOpen')}
+                hint={t('settings.onProjectOpenHint')}
+                inline
+              >
+                <Segmented<'ask' | 'start'>
+                  value={settings.claude.onProjectOpen}
+                  onChange={(onProjectOpen) => void update({ claude: { onProjectOpen } })}
+                  options={[
+                    { value: 'ask', label: t('settings.onProjectOpenAsk') },
+                    { value: 'start', label: t('settings.onProjectOpenStart') },
+                  ]}
                 />
               </FieldRow>
             </>
@@ -223,13 +255,36 @@ export function SettingsDialog() {
             <>
               <FieldRow label={t('settings.editorKind')} hint={t('settings.editorKindHint')}>
                 <Select
-                  value={settings.editor.kind}
-                  onChange={(e) => void update({ editor: { kind: e.target.value as EditorKind } })}
+                  value={
+                    settings.editor.kind === 'app'
+                      ? `app:${settings.editor.app}`
+                      : settings.editor.kind
+                  }
+                  onChange={(e) => {
+                    const value = e.target.value
+                    void update({
+                      editor: value.startsWith('app:')
+                        ? { kind: 'app', app: value.slice(4) }
+                        : { kind: value as EditorKind },
+                    })
+                  }}
                 >
-                  <option value="auto">{t('settings.editorAuto')}</option>
-                  <option value="vscode">Visual Studio Code</option>
-                  <option value="cursor">Cursor</option>
+                  <option value="ask">{t('settings.editorAsk')}</option>
+                  {(editors ?? []).map((e) => (
+                    <option key={e.id} value={`app:${e.id}`}>
+                      {e.name}
+                    </option>
+                  ))}
+                  {settings.editor.kind === 'app' &&
+                    !editors?.some((e) => e.id === settings.editor.app) && (
+                      <option value={`app:${settings.editor.app}`}>
+                        {t('settings.editorMissing', { name: settings.editor.app })}
+                      </option>
+                    )}
                   <option value="system">{t('settings.editorSystem')}</option>
+                  <option value="reveal">
+                    {t(appInfo?.platform === 'darwin' ? 'editors.revealMac' : 'editors.reveal')}
+                  </option>
                   <option value="custom">{t('settings.editorCustom')}</option>
                 </Select>
               </FieldRow>
@@ -260,6 +315,13 @@ export function SettingsDialog() {
                   value={settings.terminal.fontFamily}
                   placeholder="JetBrains Mono, D2Coding"
                   onCommit={(fontFamily) => void update({ terminal: { fontFamily } })}
+                />
+              </FieldRow>
+              <FieldRow label={t('settings.gpu')} hint={t('settings.gpuHint')} inline>
+                <Switch
+                  label={t('settings.gpu')}
+                  checked={settings.terminal.gpu}
+                  onCheckedChange={(gpu) => void update({ terminal: { gpu } })}
                 />
               </FieldRow>
             </>

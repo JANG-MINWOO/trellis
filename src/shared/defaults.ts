@@ -3,9 +3,15 @@ import type { Settings } from './types'
 export const DEFAULT_SETTINGS: Settings = {
   language: null,
   theme: 'system',
-  claude: { path: '', extraArgs: '', defaultMode: 'continue', autoStart: true },
-  editor: { kind: 'auto', customPath: '' },
-  terminal: { fontSize: 13, fontFamily: '' },
+  claude: {
+    path: '',
+    extraArgs: '',
+    defaultMode: 'continue',
+    permissionMode: 'claude-default',
+    onProjectOpen: 'ask',
+  },
+  editor: { kind: 'ask', app: '', customPath: '' },
+  terminal: { fontSize: 13, fontFamily: '', gpu: false },
   notifications: { enabled: true },
   lastProjectId: null,
 }

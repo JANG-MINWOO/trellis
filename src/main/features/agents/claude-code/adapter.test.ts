@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import type { PermissionMode } from '@shared/types'
 import { claudeCodeAdapter } from './adapter'
 
 describe('claudeCodeAdapter.launchArgs', () => {
-  const base = { bridgeConfigFile: '/data/claude-settings.json', extraArgs: [] as string[] }
+  const base = {
+    bridgeConfigFile: '/data/claude-settings.json',
+    extraArgs: [] as string[],
+    permissionMode: 'claude-default' as const,
+  }
 
   it('continues or starts a session with a known id', () => {
     expect(claudeCodeAdapter.launchArgs({ ...base, mode: 'continue', sessionId: null })).toEqual([
@@ -16,6 +21,25 @@ describe('claudeCodeAdapter.launchArgs', () => {
       '--session-id',
       'abc',
     ])
+  })
+
+  it('maps permission modes to CLI flags', () => {
+    const args = (permissionMode: PermissionMode) =>
+      claudeCodeAdapter
+        .launchArgs({ ...base, mode: 'new', sessionId: 's', permissionMode })
+        .slice(4)
+    expect(args('claude-default')).toEqual([])
+    expect(args('manual')).toEqual(['--permission-mode', 'manual'])
+    expect(args('acceptEdits')).toEqual(['--permission-mode', 'acceptEdits'])
+    expect(args('bypass')).toEqual(['--dangerously-skip-permissions'])
+    const userOverrides = claudeCodeAdapter.launchArgs({
+      ...base,
+      mode: 'new',
+      sessionId: 's',
+      permissionMode: 'bypass',
+      extraArgs: ['--permission-mode', 'plan'],
+    })
+    expect(userOverrides).not.toContain('--dangerously-skip-permissions')
   })
 
   it('lets user arguments pick the session instead', () => {

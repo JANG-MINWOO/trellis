@@ -93,6 +93,23 @@ describe('ChangesService', () => {
     expect(files(await service.get('p', project, 'head'))).toEqual(['M src/a.ts'])
   })
 
+  it('attributes changes to a turn, including files written by shell commands', async () => {
+    const root = repo()
+    const service = new ChangesService(async () => git, tempDir('trellis-data-'))
+    writeFileSync(path.join(root, 'README.md'), 'changed before the turn\n')
+    await service.beginTurn('p', root, 'prompt-1')
+    writeFileSync(path.join(root, 'app', 'src', 'a.ts'), 'edited in the turn\n')
+    execFileSync('git', ['add', '-A'], { cwd: root })
+    execFileSync('git', ['commit', '-q', '-m', 'claude committed mid-turn'], { cwd: root })
+    writeFileSync(path.join(root, 'notes.md'), 'appended by a shell command\n')
+    const turn = await service.endTurn('p', root, 'prompt-1')
+    expect(turn?.files.map((f) => `${f.status} ${f.path}`).sort()).toEqual([
+      'A notes.md',
+      'M app/src/a.ts',
+    ])
+    expect(await service.endTurn('p', root, 'prompt-1')).toBeNull()
+  })
+
   it('says so when the folder is not a repository', async () => {
     const service = new ChangesService(async () => git, tempDir('trellis-data-'))
     expect((await service.get('p', tempDir('trellis-plain-'), 'head')).kind).toBe('not-repo')

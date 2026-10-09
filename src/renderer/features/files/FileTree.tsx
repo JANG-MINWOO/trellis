@@ -26,7 +26,7 @@ function ProjectFileTree() {
   const project = useActiveProject()
   const projectId = project?.id ?? null
   const report = useStore((s) => (projectId ? s.changes[projectId] : undefined))
-  const toast = useStore((s) => s.toast)
+  const openFile = useStore((s) => s.openFile)
   const [children, setChildren] = useState<Record<string, FileNode[]>>({})
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(projectId !== null)
@@ -87,8 +87,7 @@ function ProjectFileTree() {
 
   const open = async (path: string): Promise<void> => {
     if (!projectId) return
-    const result = await api.editor.open(projectId, path)
-    if (!result.ok) toast('error', t('toast.editorFailed', { message: result.message ?? '' }))
+    await openFile(projectId, path)
   }
 
   const renderLevel = (dir: string, depth: number): React.ReactNode =>

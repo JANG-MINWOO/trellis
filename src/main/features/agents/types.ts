@@ -1,7 +1,8 @@
-import type { AgentId, LaunchMode, TrellisEvent } from '@shared/types'
+import type { AgentId, LaunchMode, PermissionMode, TrellisEvent } from '@shared/types'
 
 export interface LaunchRequest {
   mode: LaunchMode
+  permissionMode: PermissionMode
   /** Pre-assigned id for a new session; null when continuing. */
   sessionId: string | null
   extraArgs: string[]

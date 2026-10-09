@@ -1,6 +1,7 @@
 // The contract between main and renderer. preload implements TrellisApi on top of these channels.
 import type {
   AppInfo,
+  EditorApp,
   Baseline,
   ChangeReport,
   DecisionList,
@@ -31,8 +32,10 @@ export const Invoke = {
   projectsReveal: 'projects:reveal',
   filesList: 'files:list',
   editorOpen: 'editor:open',
+  editorList: 'editor:list',
   terminalStart: 'terminal:start',
   terminalKill: 'terminal:kill',
+  terminalClose: 'terminal:close',
   terminalList: 'terminal:list',
   terminalAttach: 'terminal:attach',
   eventsList: 'events:list',
@@ -55,6 +58,7 @@ export const Send = {
 export const Push = {
   terminalData: 'push:terminal-data',
   terminalUpdate: 'push:terminal-update',
+  terminalRemoved: 'push:terminal-removed',
   event: 'push:event',
   projectFsChanged: 'push:project-fs-changed',
   settingsChanged: 'push:settings-changed',
@@ -68,6 +72,7 @@ export type MenuCommand =
   | 'toggle-right'
   | 'claude-continue'
   | 'claude-new'
+  | 'claude-new-tab'
 
 export interface TerminalDataMessage {
   terminalId: string
@@ -97,17 +102,25 @@ export interface TrellisApi {
     onFsChanged(cb: (projectId: string) => void): Unsubscribe
   }
   files: { list(projectId: string, relDir: string): Promise<FileNode[]> }
-  editor: { open(projectId: string, relPath: string): Promise<{ ok: boolean; message?: string }> }
+  editor: {
+    open(projectId: string, relPath: string): Promise<{ ok: boolean; message?: string }>
+    /** Editors found on this computer. */
+    list(): Promise<EditorApp[]>
+  }
   terminal: {
     start(req: TerminalStartRequest): Promise<TerminalStartResult>
     write(terminalId: string, data: string): void
     resize(terminalId: string, cols: number, rows: number): void
+    /** Ends the process; the tab stays and shows how to restart. */
     kill(terminalId: string): Promise<void>
+    /** Ends the process and removes the tab. */
+    close(terminalId: string): Promise<void>
     list(): Promise<TerminalInfo[]>
     /** Returns buffered output so a reloaded renderer can redraw a live terminal. */
     attach(terminalId: string): Promise<string>
     onData(cb: (msg: TerminalDataMessage) => void): Unsubscribe
     onUpdate(cb: (terminal: TerminalInfo) => void): Unsubscribe
+    onRemoved(cb: (terminalId: string) => void): Unsubscribe
   }
   events: {
     list(projectId: string, limit?: number): Promise<TrellisEvent[]>

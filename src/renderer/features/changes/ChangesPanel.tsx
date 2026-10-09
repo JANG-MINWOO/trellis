@@ -25,13 +25,13 @@ export function ChangesPanel() {
   const setBaseline = useStore((s) => s.setBaseline)
   const refresh = useStore((s) => s.refreshChanges)
   const toast = useStore((s) => s.toast)
+  const open = useStore((s) => s.openFile)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   if (!project) return null
 
   const openFile = async (entry: ChangeEntry): Promise<void> => {
     if (entry.status === 'D') return
-    const result = await api.editor.open(project.id, entry.path)
-    if (!result.ok) toast('error', t('toast.editorFailed', { message: result.message ?? '' }))
+    await open(project.id, entry.path)
   }
 
   const toolbar = (

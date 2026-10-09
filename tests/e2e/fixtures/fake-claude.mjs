@@ -42,7 +42,8 @@ await post({
   source: args.includes('--continue') ? 'resume' : 'startup',
   model: 'fake-model',
 })
-process.stdout.write('\x1b[1;32mFake Claude\x1b[0m ready. Type a prompt and press Enter.\r\n> ')
+const flags = args.map((a, i) => (args[i - 1] === '--settings' ? '<settings>' : a)).join(' ')
+process.stdout.write(`\x1b[1;32mFake Claude\x1b[0m ready. args: ${flags}\r\n> `)
 
 const rl = readline.createInterface({ input: process.stdin })
 rl.on('line', async (line) => {
@@ -59,11 +60,13 @@ rl.on('line', async (line) => {
     tool_response: { type: 'create' },
     duration_ms: 5,
   })
+  // Like Claude appending with `cat >>`: the hook only sees a Bash command, git sees the file.
+  fs.appendFileSync(path.join(process.cwd(), 'notes.md'), `- ${line}\n`)
   await post({
     hook_event_name: 'PostToolUse',
     prompt_id: promptId,
     tool_name: 'Bash',
-    tool_input: { command: 'npm test', description: 'Run tests' },
+    tool_input: { command: 'cat >> notes.md', description: 'Append a note' },
     duration_ms: 1200,
   })
   await post({

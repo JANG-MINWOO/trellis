@@ -16,7 +16,7 @@ export function HealthPanel() {
 function ProjectHealth() {
   const { t } = useTranslation()
   const project = useActiveProject()
-  const toast = useStore((s) => s.toast)
+  const openFile = useStore((s) => s.openFile)
   const [report, setReport] = useState<HealthReport | null>(null)
   const [loading, setLoading] = useState(false)
   const projectId = project?.id
@@ -53,10 +53,7 @@ function ProjectHealth() {
   }
 
   const maxLines = report.largestFiles[0]?.lines ?? 1
-  const open = async (path: string): Promise<void> => {
-    const result = await api.editor.open(project.id, path)
-    if (!result.ok) toast('error', t('toast.editorFailed', { message: result.message ?? '' }))
-  }
+  const open = (path: string): Promise<void> => openFile(project.id, path)
 
   return (
     <div className="p-3" data-testid="health">

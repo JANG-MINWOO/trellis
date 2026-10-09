@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
@@ -23,12 +25,29 @@ const cspPlugin = {
     ),
 }
 
+/** "0.1.0+b5f7716" (or "+b5f7716-dirty") so the running build is always identifiable. */
+function buildStamp(): string {
+  const version = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'))
+    .version as string
+  try {
+    const commit = execFileSync('git', ['describe', '--always', '--dirty'], {
+      cwd: __dirname,
+      encoding: 'utf8',
+    }).trim()
+    return `${version}+${commit}`
+  } catch {
+    return version
+  }
+}
+const define = { __TRELLIS_BUILD__: JSON.stringify(buildStamp()) }
+
 const alias = {
   '@shared': resolve(__dirname, 'src/shared'),
 }
 
 export default defineConfig({
   main: {
+    define,
     resolve: { alias },
     build: {
       externalizeDeps: true,

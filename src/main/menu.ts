@@ -108,6 +108,11 @@ export function buildAppMenu(lang: Language, send: (command: MenuCommand) => voi
           accelerator: 'CmdOrCtrl+Shift+N',
           click: () => send('claude-new'),
         },
+        {
+          label: t('menu.claudeNewTab'),
+          accelerator: 'CmdOrCtrl+T',
+          click: () => send('claude-new-tab'),
+        },
       ],
     },
     {

@@ -31,10 +31,12 @@ test('real claude: trust prompt, Korean prompt with Shift+Enter, hooks reach the
     await win.evaluate(() =>
       window.trellis.settings.update({
         language: 'ko',
-        claude: { extraArgs: '--model haiku --permission-mode acceptEdits' },
+        claude: { extraArgs: '--model haiku', onProjectOpen: 'ask' },
       }),
     )
     await win.getByRole('button', { name: '폴더 열기' }).first().click()
+    await win.getByTestId('permission-select').selectOption('acceptEdits')
+    await win.getByTestId('launch-new').click()
 
     // New folder → Claude asks whether to trust it. Default is "No, exit": move down, confirm.
     const term = win.locator('.xterm').first()
@@ -57,6 +59,10 @@ test('real claude: trust prompt, Korean prompt with Shift+Enter, hooks reach the
     const prompt = await turn.locator('p').first().innerText()
     expect(prompt).toContain('\n')
     if (shots) await win.screenshot({ path: path.join(shots, 'real-02-done.png') })
+
+    // The turn's file list comes from git at the end of the turn (works even if Claude used Bash).
+    await expect(turn.getByText('A', { exact: true }).first()).toBeVisible({ timeout: 30_000 })
+    await expect(win.getByText('수정 자동 허용').first()).toBeVisible()
 
     await win.getByRole('tab', { name: /변경/ }).click()
     await expect(win.getByTestId('changes')).toContainText('hello.txt', { timeout: 20_000 })

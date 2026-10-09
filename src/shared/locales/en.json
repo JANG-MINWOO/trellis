@@ -5,7 +5,6 @@
     "edit": "Edit",
     "more": "More",
     "refresh": "Refresh",
-    "retry": "Try again",
     "save": "Save",
     "showLess": "Show less",
     "showMore": "Show more"
@@ -38,7 +37,8 @@
     "window": "Window",
     "minimize": "Minimize",
     "zoom": "Zoom",
-    "front": "Bring All to Front"
+    "front": "Bring All to Front",
+    "claudeNewTab": "New Conversation in New Tab"
   },
   "dialog": {
     "openFolder": "Choose a project folder to add to Trellis"
@@ -73,7 +73,9 @@
     "recheck": "Check again",
     "projectTitle": "First project",
     "projectHint": "Add a folder you want to work on with Claude. You can also skip this and add one later.",
-    "start": "Get started"
+    "start": "Get started",
+    "permissionTitle": "Default permissions for Claude",
+    "permissionHint": "You can choose each time Claude starts; this only sets what is preselected."
   },
   "projects": {
     "title": "Projects",
@@ -96,7 +98,6 @@
     "continue": "Continue",
     "newConversation": "New conversation",
     "stop": "Stop Claude",
-    "stopShell": "Stop shell",
     "restart": "Restart",
     "exited": "Session ended (code {{code}})",
     "noProjectTitle": "Open a project",
@@ -107,7 +108,12 @@
     "startFailedTitle": "Could not start Claude",
     "openClaudeSettings": "Claude Code settings",
     "startTitle": "Start Claude Code",
-    "startBody": "Continue your last conversation or start a new one."
+    "startBody": "Choose how Claude asks for permission, then continue your last conversation or start a new one.",
+    "newTab": "New tab",
+    "newClaude": "New Claude conversation",
+    "newShell": "Open a new shell",
+    "closeTab": "Close tab",
+    "confirmClose": "Claude is running in this tab. Closing the tab ends it; the conversation stays in Claude Code so you can continue it later."
   },
   "intent": {
     "title": "Intent",
@@ -142,7 +148,9 @@
     "sessionResume": "Conversation continued",
     "sessionClear": "Conversation cleared (/clear)",
     "sessionCompact": "Conversation compacted",
-    "sessionEnd": "Conversation ended"
+    "sessionEnd": "Conversation ended",
+    "allTabs": "All tabs",
+    "closedTab": "Closed tab"
   },
   "changes": {
     "title": "Changes",
@@ -218,11 +226,8 @@
     "extraArgsHint": "Added when launching claude. Example: --model opus",
     "defaultMode": "Start with",
     "defaultModeHint": "Starts a new conversation when there is nothing to continue.",
-    "autoStart": "Start when a project opens",
-    "autoStartHint": "Launch Claude Code as soon as you pick a project.",
     "editorKind": "Open files with",
-    "editorKindHint": "Trellis has no editor of its own; files open in the editor you choose here.",
-    "editorAuto": "Automatic (VS Code → Cursor → system default)",
+    "editorKindHint": "Trellis has no editor of its own; files open in the app you choose here. Only editors found on this computer are listed.",
     "editorSystem": "System default app",
     "editorCustom": "Custom",
     "customPath": "Editor executable",
@@ -236,11 +241,66 @@
     "decisionsDirHint": "Relative to the project. Leave empty to turn the decisions panel off — do that if the project already records decisions another way, so they are not kept twice.",
     "recordLanguage": "Record language",
     "recordLanguageHint": "Language for records Trellis writes into this project.",
-    "followApp": "Follow app language"
+    "followApp": "Follow app language",
+    "permissionMode": "Default permissions",
+    "onProjectOpen": "When a project opens",
+    "onProjectOpenHint": "\"Ask\" shows a card to choose permissions and continue/new; \"Start\" launches right away with the defaults.",
+    "onProjectOpenAsk": "Ask",
+    "onProjectOpenStart": "Start",
+    "editorAsk": "Ask the first time",
+    "editorMissing": "{{name}} (not found)",
+    "gpu": "GPU-accelerated rendering",
+    "gpuHint": "Faster with heavy output, but on some setups the screen may stop repainting. Turn it off if typed text does not appear."
   },
   "toast": {
     "editorFailed": "Could not open the file. {{message}}",
     "gitInitDone": "Created a git repository.",
     "gitInitFailed": "Could not create a git repository. {{message}}"
+  },
+  "launch": {
+    "permission": "Permissions",
+    "continueBusy": "Claude is running in another tab, so \"Continue\" is unavailable — two tabs on one conversation would tangle it. Start a new conversation."
+  },
+  "permission": {
+    "claude-default": {
+      "label": "Follow Claude settings",
+      "short": "Claude settings",
+      "hint": "Trellis passes no permission flag; ~/.claude/settings.json and Claude Code defaults decide."
+    },
+    "manual": {
+      "label": "Ask every time (manual)",
+      "short": "Ask every time",
+      "hint": "Asks before every file edit and command."
+    },
+    "acceptEdits": {
+      "label": "Auto-accept edits (acceptEdits)",
+      "short": "Edits accepted",
+      "hint": "File edits go through; commands still ask."
+    },
+    "auto": {
+      "label": "Auto (auto)",
+      "short": "Auto",
+      "hint": "Claude Code judges the risk and only asks when needed."
+    },
+    "plan": {
+      "label": "Plan only (plan)",
+      "short": "Plan only",
+      "hint": "Plans without changing files; acts only after you approve."
+    },
+    "bypass": {
+      "label": "Skip all checks (dangerously-skip-permissions)",
+      "short": "No checks",
+      "hint": "Runs everything without asking. Use only in folders you trust, when you can review the result."
+    }
+  },
+  "editors": {
+    "title": "Open files with which editor?",
+    "description": "{{path}} — you will not be asked again.",
+    "system": "Default app",
+    "systemHint": "The app associated with the file type",
+    "reveal": "Show in Explorer",
+    "revealMac": "Show in Finder",
+    "revealHint": "Show where the file is instead of opening it",
+    "changeLater": "You can change this anytime in Settings → Editor."
   }
 }

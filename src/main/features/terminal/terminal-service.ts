@@ -1,12 +1,14 @@
 // Starts Claude (or a shell) for a project inside a pty. Claude runs as the pty process itself,
-// with argv only — no shell string, no quoting rules (ADR-0013).
+// with argv only — no shell string, no quoting rules (ADR-0013). A project may have several tabs.
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from '@shared/cli-args'
 import type {
   LaunchMode,
+  PermissionMode,
   Settings,
   TerminalInfo,
+  TerminalKind,
   TerminalStartRequest,
   TerminalStartResult,
 } from '@shared/types'
@@ -21,6 +23,7 @@ import { PtyManager, type SpawnPlan } from './pty-manager'
 
 /** A continue attempt that dies this fast without events is treated as "nothing to continue". */
 const CONTINUE_GRACE_MS = 20_000
+const BEFORE_LAUNCH_TIMEOUT_MS = 4000
 
 export interface TerminalServiceDeps {
   ptys: PtyManager
@@ -29,18 +32,18 @@ export interface TerminalServiceDeps {
   settings: () => Settings
   baseEnv: () => Promise<NodeJS.ProcessEnv>
   bridge: () => { token: string; configFile: string }
-  /** Runs before Claude starts (e.g. the "this run" baseline). Bounded so launch never hangs. */
+  /** Runs before the first Claude of a project starts (the "this run" baseline). Bounded. */
   beforeClaudeLaunch: (projectId: string, root: string) => Promise<void>
 }
 
-const BEFORE_LAUNCH_TIMEOUT_MS = 4000
+type TerminalSeed = Omit<TerminalInfo, 'running' | 'exitCode' | 'startedAt'>
 
 export class TerminalService {
   /** Terminals that have reported at least one agent event (proves the session is alive). */
   private readonly sawEvents = new Set<string>()
-  private readonly launchModes = new Map<
+  private readonly launches = new Map<
     string,
-    { mode: LaunchMode; startedAt: number; retried: boolean }
+    { mode: LaunchMode; permissionMode: PermissionMode; startedAt: number; retried: boolean }
   >()
   /** Two quick start requests for the same project must not create two terminals. */
   private readonly startQueue = new KeyedSerialQueue()
@@ -59,7 +62,14 @@ export class TerminalService {
   }
 
   start(req: TerminalStartRequest): Promise<TerminalStartResult> {
-    return this.startQueue.run(`${req.projectId}:${req.kind}`, () => this.startNow(req))
+    return this.startQueue.run(req.projectId, () => this.startNow(req))
+  }
+
+  private ofProject(projectId: string, kind?: TerminalKind): TerminalInfo[] {
+    return this.deps.ptys
+      .list()
+      .filter((t) => t.projectId === projectId && (!kind || t.kind === kind))
+      .sort((a, b) => a.index - b.index)
   }
 
   private async startNow(req: TerminalStartRequest): Promise<TerminalStartResult> {
@@ -67,19 +77,31 @@ export class TerminalService {
     if (!project || !existsSync(project.path)) {
       return { ok: false, reason: 'project-missing', message: project?.path ?? req.projectId }
     }
-    const existing = this.deps.ptys
-      .list()
-      .find((t) => t.projectId === project.id && t.kind === req.kind)
+    const siblings = this.ofProject(project.id, req.kind)
+    const existing = req.terminalId
+      ? siblings.find((t) => t.id === req.terminalId)
+      : req.newTab
+        ? undefined
+        : siblings[0]
     if (existing?.running) return { ok: true, terminal: existing }
+    const index = existing?.index ?? Math.max(0, ...siblings.map((t) => t.index)) + 1
 
     const env = await this.childEnv()
     if (req.kind === 'shell') {
       const shell = defaultShell(env)
-      const plan: SpawnPlan = { file: shell.file, args: shell.args, cwd: project.path, env }
+      const seed: TerminalSeed = {
+        id: existing?.id ?? newId(),
+        projectId: project.id,
+        kind: 'shell',
+        title: shell.name,
+        index,
+        sessionId: null,
+        permissionMode: null,
+      }
       return this.spawnOrRestart(
         existing,
-        { id: newId(), projectId: project.id, kind: 'shell', title: shell.name, sessionId: null },
-        plan,
+        seed,
+        { file: shell.file, args: shell.args, cwd: project.path, env },
         req,
       )
     }
@@ -92,51 +114,70 @@ export class TerminalService {
         message: this.deps.settings().claude.path || this.deps.adapter.executableName,
       }
     }
+    const otherClaudeRunning = this.ofProject(project.id, 'claude').some(
+      (t) => t.running && t.id !== existing?.id,
+    )
     let mode = req.mode ?? this.deps.settings().claude.defaultMode
+    // "Continue" opens the most recent conversation; another tab may be using it right now.
+    if (mode === 'continue' && otherClaudeRunning) mode = 'new'
     if (mode === 'continue' && !(await this.deps.adapter.hasPriorSession(project.path, env)))
       mode = 'new'
+    const permissionMode = req.permissionMode ?? this.deps.settings().claude.permissionMode
 
     const terminalId = existing?.id ?? newId()
     const sessionId = mode === 'new' ? newId() : null
     const { token, configFile } = this.deps.bridge()
     const args = this.deps.adapter.launchArgs({
       mode,
+      permissionMode,
       sessionId,
       extraArgs: parseArgs(this.deps.settings().claude.extraArgs),
       bridgeConfigFile: configFile,
     })
-    const agentEnv = { ...env, ...this.deps.adapter.bridgeEnv(token, project.id, terminalId) }
-    const plan = this.wrap({ file: executable, args, cwd: project.path, env: agentEnv })
+    const plan = this.wrap({
+      file: executable,
+      args,
+      cwd: project.path,
+      env: { ...env, ...this.deps.adapter.bridgeEnv(token, project.id, terminalId) },
+    })
 
     // The baseline must exist before Claude can touch anything, or early edits would hide in it.
-    await Promise.race([
-      this.deps.beforeClaudeLaunch(project.id, project.path).catch(() => undefined),
-      new Promise((resolve) => setTimeout(resolve, BEFORE_LAUNCH_TIMEOUT_MS)),
-    ])
+    // Extra tabs keep the baseline of the run already in progress.
+    if (!otherClaudeRunning) {
+      await Promise.race([
+        this.deps.beforeClaudeLaunch(project.id, project.path).catch(() => undefined),
+        new Promise((resolve) => setTimeout(resolve, BEFORE_LAUNCH_TIMEOUT_MS)),
+      ])
+    }
 
     this.sawEvents.delete(terminalId)
-    this.launchModes.set(terminalId, { mode, startedAt: Date.now(), retried: false })
-    return this.spawnOrRestart(
-      existing,
-      { id: terminalId, projectId: project.id, kind: 'claude', title: 'Claude', sessionId },
-      plan,
-      req,
-    )
+    this.launches.set(terminalId, { mode, permissionMode, startedAt: Date.now(), retried: false })
+    const seed: TerminalSeed = {
+      id: terminalId,
+      projectId: project.id,
+      kind: 'claude',
+      title: 'Claude',
+      index,
+      sessionId,
+      permissionMode,
+    }
+    return this.spawnOrRestart(existing, seed, plan, req)
   }
 
   private spawnOrRestart(
     existing: TerminalInfo | undefined,
-    info: Omit<TerminalInfo, 'running' | 'exitCode' | 'startedAt'>,
+    seed: TerminalSeed,
     plan: SpawnPlan,
     req: TerminalStartRequest,
   ): TerminalStartResult {
     try {
       const terminal = existing
         ? this.deps.ptys.restart(existing.id, plan, {
-            sessionId: info.sessionId,
-            title: info.title,
+            sessionId: seed.sessionId,
+            title: seed.title,
+            permissionMode: seed.permissionMode,
           })
-        : this.deps.ptys.create(info, plan, req.cols, req.rows)
+        : this.deps.ptys.create(seed, plan, req.cols || 100, req.rows || 30)
       if (!terminal) return { ok: false, reason: 'spawn-failed', message: 'terminal vanished' }
       return { ok: true, terminal }
     } catch (error) {
@@ -146,7 +187,7 @@ export class TerminalService {
 
   private handleExit(info: TerminalInfo, output: string): void {
     if (info.kind !== 'claude') return
-    const launch = this.launchModes.get(info.id)
+    const launch = this.launches.get(info.id)
     if (
       launch &&
       launch.mode === 'continue' &&
@@ -157,7 +198,15 @@ export class TerminalService {
       this.deps.adapter.isNothingToContinue(output)
     ) {
       launch.retried = true
-      void this.start({ projectId: info.projectId, kind: 'claude', mode: 'new', cols: 0, rows: 0 })
+      void this.start({
+        projectId: info.projectId,
+        kind: 'claude',
+        mode: 'new',
+        permissionMode: launch.permissionMode,
+        terminalId: info.id,
+        cols: 0,
+        rows: 0,
+      })
     }
   }
 

@@ -1,1 +1,1 @@
-export { BridgeServer, type BridgePayload } from './bridge-server'
+export { BridgeServer, type BridgeHandler, type BridgePayload } from './bridge-server'

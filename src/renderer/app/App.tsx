@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { TooltipProvider } from '../components/ui'
+import { EditorChooser } from '../features/editors'
 import { OnboardingScreen } from '../features/onboarding'
 import { SettingsDialog } from '../features/settings'
 import { api } from '../lib/api'
@@ -42,11 +43,13 @@ function useMenuCommands(): void {
           case 'claude-continue':
           case 'claude-new':
             if (s.activeProjectId)
-              void s.startTerminal(
-                s.activeProjectId,
-                'claude',
-                command === 'claude-new' ? 'new' : 'continue',
-              )
+              void s.startTerminal(s.activeProjectId, 'claude', {
+                mode: command === 'claude-new' ? 'new' : 'continue',
+              })
+            break
+          case 'claude-new-tab':
+            if (s.activeProjectId)
+              void s.startTerminal(s.activeProjectId, 'claude', { mode: 'new', newTab: true })
             break
         }
       }),
@@ -80,6 +83,7 @@ export function App() {
           <AppShell />
         )}
         <SettingsDialog />
+        <EditorChooser />
         <Toasts />
       </div>
     </TooltipProvider>
