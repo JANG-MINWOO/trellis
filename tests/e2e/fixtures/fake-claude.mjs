@@ -44,7 +44,7 @@ process.stdout.write(`\x1b[1;32mFake Claude\x1b[0m ready. args: ${flags}\r\n> `)
 const rl = readline.createInterface({ input: process.stdin })
 rl.on('line', async (raw) => {
   // Bracketed-paste markers arrive when text comes from Trellis' input box.
-  const line = raw.replace(/\x1b\[20[01]~/g, '')
+  const line = raw.replaceAll('\x1b[200~', '').replaceAll('\x1b[201~', '')
   if (!line) return
   const promptId = randomUUID()
   await post({ hook_event_name: 'UserPromptSubmit', prompt: line, prompt_id: promptId })
