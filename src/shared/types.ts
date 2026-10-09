@@ -45,6 +45,11 @@ export interface Settings {
     fontFamily: string
     /** WebGL rendering. Off by default: the DOM renderer is slower but never fails to repaint. */
     gpu: boolean
+    /**
+     * Native input box under Claude tabs. Text is composed by the OS (Korean IME works) and sent
+     * as one paste, which avoids Claude Code's jamo-splitting bug after switching languages.
+     */
+    composer: boolean
   }
   notifications: { enabled: boolean }
   lastProjectId: string | null

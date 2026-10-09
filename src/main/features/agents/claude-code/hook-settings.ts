@@ -7,8 +7,9 @@ export const BRIDGE_ENV = {
   terminal: 'TRELLIS_TERMINAL_ID',
 } as const
 
+// SessionStart is left out on purpose: in interactive mode Claude Code (2.1.294) runs only
+// command hooks for it, never HTTP hooks. Trellis records session starts itself at launch.
 const HOOK_EVENTS = [
-  'SessionStart',
   'SessionEnd',
   'UserPromptSubmit',
   'PostToolUse',

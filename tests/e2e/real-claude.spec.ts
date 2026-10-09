@@ -48,11 +48,15 @@ test('real claude: trust prompt, Korean prompt with Shift+Enter, hooks reach the
     await win.keyboard.press('Enter')
     await win.waitForTimeout(6000)
 
-    await win.keyboard.type('hello.txt 파일을 만들고 안에 hi 라고 써 줘.')
-    await win.keyboard.press('Shift+Enter')
-    await win.keyboard.type('끝나면 한국어로 "완료"라고만 답해 줘.')
-    await win.keyboard.press('Enter')
+    // Send through the input box: Korean, two lines (Shift+Enter), one paste + Enter.
+    const composer = win.getByTestId('composer-input')
+    await composer.click()
+    await composer.pressSequentially('hello.txt 파일을 만들고 안에 hi 라고 써 줘.')
+    await composer.press('Shift+Enter')
+    await composer.pressSequentially('끝나면 한국어로 "완료"라고만 답해 줘.')
+    await composer.press('Enter')
 
+    await expect(win.getByTestId('timeline')).toContainText('새 대화 시작')
     const turn = win.getByTestId('turn-card').first()
     await expect(turn).toContainText('hello.txt', { timeout: 120_000 })
     await expect(turn).toContainText('완료', { timeout: 120_000 })

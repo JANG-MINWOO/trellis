@@ -34,6 +34,13 @@ export interface TerminalServiceDeps {
   bridge: () => { token: string; configFile: string }
   /** Runs before the first Claude of a project starts (the "this run" baseline). Bounded. */
   beforeClaudeLaunch: (projectId: string, root: string) => Promise<void>
+  /** A Claude process was started (the agent does not report session starts over HTTP). */
+  onClaudeLaunched: (launch: {
+    projectId: string
+    terminalId: string
+    sessionId: string | null
+    mode: LaunchMode
+  }) => void
 }
 
 type TerminalSeed = Omit<TerminalInfo, 'running' | 'exitCode' | 'startedAt'>
@@ -161,7 +168,10 @@ export class TerminalService {
       sessionId,
       permissionMode,
     }
-    return this.spawnOrRestart(existing, seed, plan, req)
+    const result = this.spawnOrRestart(existing, seed, plan, req)
+    if (result.ok)
+      this.deps.onClaudeLaunched({ projectId: project.id, terminalId, sessionId, mode })
+    return result
   }
 
   private spawnOrRestart(

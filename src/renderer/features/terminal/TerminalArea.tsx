@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bot, FolderPlus, RotateCcw, Square, TriangleAlert, X } from 'lucide-react'
+import { Bot, FolderPlus, Keyboard, RotateCcw, Square, TriangleAlert, X } from 'lucide-react'
 import { Badge, Button, EmptyState, IconButton } from '../../components/ui'
 import { api } from '../../lib/api'
 import { pickTab, useActiveProject, useStore } from '../../state/store'
+import { Composer } from './Composer'
 import { LaunchPanel } from './LaunchPanel'
 import { TerminalTabs } from './TerminalTabs'
 import { XTerm } from './XTerm'
@@ -19,6 +20,8 @@ export function TerminalArea() {
   const addProject = useStore((s) => s.addProject)
   const removeProject = useStore((s) => s.removeProject)
   const openSettings = useStore((s) => s.openSettings)
+  const composerOn = useStore((s) => s.settings?.terminal.composer ?? true)
+  const updateSettings = useStore((s) => s.updateSettings)
 
   const all = useMemo(() => Object.values(terminals), [terminals])
   const tabs = useMemo(
@@ -55,6 +58,15 @@ export function TerminalArea() {
                 {t(`permission.${current.permissionMode}.short`)}
               </Badge>
             )}
+            <IconButton
+              label={t('terminal.composerToggle')}
+              active={composerOn}
+              aria-pressed={composerOn}
+              onClick={() => void updateSettings({ terminal: { composer: !composerOn } })}
+              data-testid="composer-toggle"
+            >
+              <Keyboard size={14} />
+            </IconButton>
             {current.running && (
               <IconButton
                 label={t('terminal.stop')}
@@ -75,6 +87,7 @@ export function TerminalArea() {
             terminalId={term.id}
             kind={term.kind}
             visible={term.id === activeId}
+            focusOnShow={!(composerOn && term.kind === 'claude')}
           />
         ))}
 
@@ -177,6 +190,9 @@ export function TerminalArea() {
           </Overlay>
         )}
       </div>
+      {project && current?.kind === 'claude' && current.running && composerOn && (
+        <Composer terminalId={current.id} focusKey={current.startedAt} />
+      )}
     </div>
   )
 }

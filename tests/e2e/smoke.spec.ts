@@ -78,13 +78,17 @@ test('launch card → claude session → per-turn changes, tabs, stop/restart, e
     await expect(win.getByTestId('timeline')).toBeVisible({ timeout: 20_000 })
     await expect.poll(() => buffer(win, 'claude')).toContain('--permission-mode acceptEdits')
 
-    await win.locator('.xterm').first().click()
-    await win.keyboard.type('add a demo file')
-    await win.keyboard.press('Enter')
+    // Trellis records the session start itself (Claude Code sends no HTTP SessionStart).
+    await expect(win.getByTestId('timeline')).toContainText(/새 대화 시작|New conversation/)
+
+    // The input box below the terminal sends composed text (Korean included) as one paste.
+    await win.getByTestId('composer-input').fill('add a demo file 한글로 설명해 줘')
+    await win.getByTestId('composer-input').press('Enter')
+    await expect(win.getByTestId('composer-input')).toHaveValue('')
 
     // The turn lists both files: one reported by the Write tool, one only git could see (Bash).
     const turn = win.getByTestId('turn-card').first()
-    await expect(turn).toContainText('add a demo file', { timeout: 20_000 })
+    await expect(turn).toContainText('add a demo file 한글로 설명해 줘', { timeout: 20_000 })
     await expect(turn).toContainText('notes.md', { timeout: 20_000 })
     await expect(turn).toContainText('fake-output.txt')
     await shot(win, '03-timeline')

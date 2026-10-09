@@ -317,6 +317,13 @@ export function SettingsDialog() {
                   onCommit={(fontFamily) => void update({ terminal: { fontFamily } })}
                 />
               </FieldRow>
+              <FieldRow label={t('settings.composer')} hint={t('settings.composerHint')} inline>
+                <Switch
+                  label={t('settings.composer')}
+                  checked={settings.terminal.composer}
+                  onCheckedChange={(composer) => void update({ terminal: { composer } })}
+                />
+              </FieldRow>
               <FieldRow label={t('settings.gpu')} hint={t('settings.gpuHint')} inline>
                 <Switch
                   label={t('settings.gpu')}

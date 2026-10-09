@@ -14,14 +14,17 @@ interface Props {
   terminalId: string
   kind: TerminalKind
   visible: boolean
+  /** Take keyboard focus when shown (off when the composer should get it instead). */
+  focusOnShow: boolean
 }
 
-export function XTerm({ terminalId, kind, visible }: Props) {
+export function XTerm({ terminalId, kind, visible, focusOnShow }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const webglRef = useRef<WebglAddon | null>(null)
   const visibleRef = useRef(visible)
+  const focusOnShowRef = useRef(focusOnShow)
   const fontSize = useStore((s) => s.settings?.terminal.fontSize ?? 13)
   const fontFamily = useStore((s) => s.settings?.terminal.fontFamily || DEFAULT_TERMINAL_FONT)
   const isDark = useStore((s) => s.isDark)
@@ -30,7 +33,8 @@ export function XTerm({ terminalId, kind, visible }: Props) {
 
   useEffect(() => {
     visibleRef.current = visible
-  }, [visible])
+    focusOnShowRef.current = focusOnShow
+  }, [visible, focusOnShow])
 
   // One xterm per terminal id, kept alive while hidden so scrollback survives tab switches.
   useEffect(() => {
@@ -156,7 +160,7 @@ export function XTerm({ terminalId, kind, visible }: Props) {
         } catch {
           // ignore
         }
-        term.focus()
+        if (focusOnShowRef.current) term.focus()
       })
     }
     if ((!visible || !gpu) && webglRef.current) {

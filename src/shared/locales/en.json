@@ -113,7 +113,8 @@
     "newClaude": "New Claude conversation",
     "newShell": "Open a new shell",
     "closeTab": "Close tab",
-    "confirmClose": "Claude is running in this tab. Closing the tab ends it; the conversation stays in Claude Code so you can continue it later."
+    "confirmClose": "Claude is running in this tab. Closing the tab ends it; the conversation stays in Claude Code so you can continue it later.",
+    "composerToggle": "Show/hide input box"
   },
   "intent": {
     "title": "Intent",
@@ -250,7 +251,9 @@
     "editorAsk": "Ask the first time",
     "editorMissing": "{{name}} (not found)",
     "gpu": "GPU-accelerated rendering",
-    "gpuHint": "Faster with heavy output, but on some setups the screen may stop repainting. Turn it off if typed text does not appear."
+    "gpuHint": "Faster with heavy output, but on some setups the screen may stop repainting. Turn it off if typed text does not appear.",
+    "composer": "Claude input box",
+    "composerHint": "A regular text box under Claude tabs. Text is finished by your input method and sent at once, avoiding Claude Code splitting Korean into jamo after switching languages."
   },
   "toast": {
     "editorFailed": "Could not open the file. {{message}}",
@@ -302,5 +305,10 @@
     "revealMac": "Show in Finder",
     "revealHint": "Show where the file is instead of opening it",
     "changeLater": "You can change this anytime in Settings → Editor."
+  },
+  "composer": {
+    "placeholder": "Message to Claude",
+    "send": "Send",
+    "hint": "Enter to send · Shift+Enter for a new line · Esc when empty interrupts Claude · click the terminal for menus and other direct input"
   }
 }

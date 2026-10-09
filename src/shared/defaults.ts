@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
     onProjectOpen: 'ask',
   },
   editor: { kind: 'ask', app: '', customPath: '' },
-  terminal: { fontSize: 13, fontFamily: '', gpu: false },
+  terminal: { fontSize: 13, fontFamily: '', gpu: false, composer: true },
   notifications: { enabled: true },
   lastProjectId: null,
 }

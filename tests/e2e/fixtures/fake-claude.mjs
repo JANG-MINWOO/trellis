@@ -37,16 +37,15 @@ function post(body) {
   })
 }
 
-await post({
-  hook_event_name: 'SessionStart',
-  source: args.includes('--continue') ? 'resume' : 'startup',
-  model: 'fake-model',
-})
+// Real Claude Code does not send SessionStart over HTTP hooks; neither do we.
 const flags = args.map((a, i) => (args[i - 1] === '--settings' ? '<settings>' : a)).join(' ')
 process.stdout.write(`\x1b[1;32mFake Claude\x1b[0m ready. args: ${flags}\r\n> `)
 
 const rl = readline.createInterface({ input: process.stdin })
-rl.on('line', async (line) => {
+rl.on('line', async (raw) => {
+  // Bracketed-paste markers arrive when text comes from Trellis' input box.
+  const line = raw.replace(/\x1b\[20[01]~/g, '')
+  if (!line) return
   const promptId = randomUUID()
   await post({ hook_event_name: 'UserPromptSubmit', prompt: line, prompt_id: promptId })
   const file = path.join(process.cwd(), 'src', 'feature', 'fake-output.txt')

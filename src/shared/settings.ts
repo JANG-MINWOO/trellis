@@ -61,6 +61,7 @@ export function normalizeSettings(raw: unknown): Settings {
       fontSize: num(terminal.fontSize, d.terminal.fontSize, 9, 28),
       fontFamily: str(terminal.fontFamily, d.terminal.fontFamily),
       gpu: bool(terminal.gpu, d.terminal.gpu),
+      composer: bool(terminal.composer, d.terminal.composer),
     },
     notifications: { enabled: bool(notifications.enabled, d.notifications.enabled) },
     lastProjectId: typeof r.lastProjectId === 'string' ? r.lastProjectId : null,

@@ -107,6 +107,20 @@ async function bootstrap(): Promise<void> {
     baseEnv: env,
     bridge: () => ({ token: bridge.token, configFile: bridgeConfigFile }),
     beforeClaudeLaunch: (projectId, root) => changes.snapshotSession(projectId, root),
+    onClaudeLaunched: ({ projectId, terminalId, sessionId, mode }) =>
+      void events
+        .append({
+          id: newId(),
+          ts: Date.now(),
+          projectId,
+          agent: 'trellis',
+          sessionId,
+          promptId: null,
+          terminalId,
+          kind: 'session.start',
+          data: { source: mode === 'continue' ? 'resume' : 'startup', model: null },
+        })
+        .catch(() => undefined),
   })
   terminals = terminalService
 
