@@ -156,6 +156,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] `npm run dev`(watch), `npm run install:local`(dmg 없이 안정 빌드 교체), 상태 바에 `버전+커밋` — ADR-0021
 - [x] Claude 탭 아래 입력창 — 언어 전환 직후 한글이 자모로 쪼개지는 Claude Code 버그 우회 — ADR-0022
 - [x] 대화 시작·이어서 기록을 Trellis가 직접 남김 (SessionStart는 HTTP 훅으로 안 옴) — ADR-0003 덧붙임
+- [x] 이미지: 입력창·터미널에 클립보드 이미지를 붙여넣으면 Claude의 이미지 붙여넣기 키(macOS Ctrl+V, Windows Alt+V)로 넘겨 `[Image #N]`으로 첨부, 파일 끌어다 놓기는 경로로 입력
 - [ ] (미누) 새 빌드에서 셸 탭 한글·영어 입력이 보이는지 확인. 여전히 안 되면 입력기(IME) 쪽을 조사
 
 ### M2 — 결정 감지 → 기록 (F6)
