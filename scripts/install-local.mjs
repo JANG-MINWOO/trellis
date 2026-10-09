@@ -22,6 +22,8 @@ function swap(src) {
   // ditto keeps permissions, symlinks and extended attributes intact inside the bundle.
   const copy = spawnSync('ditto', [src, DEST], { stdio: 'inherit' })
   if (copy.status !== 0) process.exit(copy.status ?? 1)
+  // Spotlight/Launchpad would otherwise list this build output as a second "Trellis".
+  rmSync(src, { recursive: true, force: true })
 }
 
 // Background mode: wait for Trellis to quit, swap, reopen.
