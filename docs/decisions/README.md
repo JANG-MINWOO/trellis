@@ -51,3 +51,6 @@
 | [0020](0020-editor-chooser.md) | 편집기는 처음 열 때 한 번 묻는다 | 채택 |
 | [0021](0021-dev-loop-and-updates.md) | 개발 중 갱신은 install:local, 배포·자동 업데이트는 서명 후에 | 일부 제안 |
 | [0022](0022-composer-for-korean-ime.md) | Claude 탭 아래에 일반 입력창을 둔다 | 채택 |
+| [0023](0023-decision-candidates-from-turn-analysis.md) | 결정은 턴 분석으로 찾고, 이유는 사람이 쓴다 | 채택 |
+| [0024](0024-behavior-specs-format.md) | 동작 명세는 영역별 마크다운, 항목에 고정 번호 | 채택 |
+| [0025](0025-structured-intent-with-prediction.md) | 작업 의도는 목표·금지·예상 영역으로 나눠 적는다 | 채택 |
