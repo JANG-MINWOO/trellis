@@ -54,3 +54,7 @@
 | [0023](0023-decision-candidates-from-turn-analysis.md) | 결정은 턴 분석으로 찾고, 이유는 사람이 쓴다 | 채택 |
 | [0024](0024-behavior-specs-format.md) | 동작 명세는 영역별 마크다운, 항목에 고정 번호 | 채택 |
 | [0025](0025-structured-intent-with-prediction.md) | 작업 의도는 목표·금지·예상 영역으로 나눠 적는다 | 채택 |
+| [0026](0026-structure-rules-in-target-repo.md) | 구조 규칙은 대상 저장소의 `.trellis/`에 두고, 엔진은 git 트리를 읽는다 | 채택 |
+| [0027](0027-guard-via-stop-hook-block.md) | 작업 끝 검사는 Stop 훅에 block으로 답해 되돌려 보낸다 | 채택 |
+| [0028](0028-health-snapshots-and-doc-drift.md) | 건강 추세는 하루 한 번 스냅샷, 문서 어긋남은 "살아 있는 문서"만 본다 | 채택 |
+| [0029](0029-starter-templates.md) | 시작 템플릿은 없는 파일만 만들고, 지침 원본은 하나로 둔다 | 채택 |
