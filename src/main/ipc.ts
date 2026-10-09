@@ -3,18 +3,20 @@ import { Invoke, Send } from '@shared/ipc'
 import { translate } from '@shared/i18n'
 import type {
   Baseline,
+  Language,
+  Project,
   ProjectPatch,
   SettingsPatch,
   TerminalStartRequest,
   TrellisEvent,
 } from '@shared/types'
 import type { AppContext } from './context'
+import { applyTemplates, planTemplates } from './features/templates'
 import { registerIntentIpc } from './ipc-intent'
 import { listDecisionDocs } from './features/decisions'
 import { openInEditor } from './features/editor'
 import { checkEnvironment } from './features/environment'
 import { listDirectory } from './features/files'
-import { computeHealth } from './features/health'
 import { newId } from './lib/ids'
 import { detectEditors } from './platform/editors'
 import { currentPlatform } from './platform/os'
@@ -167,9 +169,17 @@ export function registerIpc(ctx: AppContext): void {
     const p = project(id)
     return listDecisionDocs(p.path, p.decisionsDir)
   })
-  handle(Invoke.healthGet, async (id) => {
+  handle(Invoke.healthGet, (id) => ctx.health.get(project(id)))
+  handle(Invoke.rulesFreezeBaseline, (id) => ctx.rules.freezeBaseline(project(id)))
+  const recordLang = (p: Project): Language =>
+    p.recordLanguage ?? ctx.settings.get().language ?? 'en'
+  handle(Invoke.templatesPlan, (id) => {
     const p = project(id)
-    const inRepo = (await ctx.changes.repoInfo(p.path)) !== null
-    return computeHealth(p.path, await ctx.git(), inRepo)
+    return planTemplates(p, recordLang(p))
+  })
+  handle(Invoke.templatesApply, async (id, paths) => {
+    const p = project(id)
+    const list = Array.isArray(paths) ? paths.map(asString) : []
+    return { written: await applyTemplates(p, recordLang(p), list) }
   })
 }

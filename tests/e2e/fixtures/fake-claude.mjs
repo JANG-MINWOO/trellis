@@ -134,9 +134,9 @@ function interactive() {
       tool_input: { command: 'cat >> notes.md', description: 'Append a note' },
       duration_ms: 1200,
     })
-    // A prompt containing "BIGFILE" also writes an over-long file, which a guard may send back.
-    const big = path.join(process.cwd(), 'src', 'feature', 'big.txt')
-    if (line.includes('BIGFILE')) fs.writeFileSync(big, 'x\n'.repeat(900))
+    // A prompt containing "BIGFILE" also writes an over-long code file, which a guard may send back.
+    const big = path.join(process.cwd(), 'src', 'feature', 'big.ts')
+    if (line.includes('BIGFILE')) fs.writeFileSync(big, 'export const x = 1\n'.repeat(900))
     const stop = await post({
       hook_event_name: 'Stop',
       prompt_id: promptId,
@@ -146,7 +146,7 @@ function interactive() {
     // Like Claude: a "block" answer means keep working on the reason, then stop again.
     if (stop?.decision === 'block') {
       process.stdout.write(`\r\nBlocked: ${String(stop.reason).split('\n')[0]}\r\n`)
-      fs.writeFileSync(big, 'x\n'.repeat(10))
+      fs.writeFileSync(big, 'export const x = 1\n'.repeat(10))
       await post({
         hook_event_name: 'Stop',
         prompt_id: promptId,

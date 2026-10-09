@@ -179,6 +179,11 @@ export class ChangesService {
     })
   }
 
+  /** The tree a turn started from, if known (to prepare checks while the agent works). */
+  turnStartTree(projectId: string, promptId: string): string | null {
+    return this.turnStarts.get(`${projectId}:${promptId}`)?.tree ?? null
+  }
+
   /** Same as turnChanges(…, finish = true); kept for callers that only need the result. */
   endTurn(projectId: string, root: string, promptId: string): Promise<TurnChanges | null> {
     return this.turnChanges(projectId, root, promptId, true)
@@ -259,6 +264,14 @@ export class ChangesService {
   }
 
   /** Tree object of the working tree as it is right now (tracked + untracked, honoring .gitignore). */
+  /** Tree of the working copy right now (tracked and untracked, not ignored), for rule checks. */
+  snapshotNow(projectId: string, root: string): Promise<{ info: RepoInfo; tree: string } | null> {
+    return this.queue.run(projectId, async () => {
+      const info = await this.repoInfo(root)
+      return info ? { info, tree: await this.snapshotTree(info) } : null
+    })
+  }
+
   private async snapshotTree(info: RepoInfo): Promise<string> {
     const git = (await this.git())!
     const realIndex = path.resolve(

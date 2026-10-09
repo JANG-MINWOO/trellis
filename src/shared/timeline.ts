@@ -47,6 +47,9 @@ export interface TurnItem {
   analysis: AnalysisRun | null
   /** Last structure check of the turn (a blocked check is followed by a final one). */
   rules: RulesCheck | null
+  /** Times the guard sent the turn back to the agent to fix problems, and the last reason. */
+  sentBack: number
+  sentBackFor: RulesCheck | null
   lastMessage: string | null
   waitingMessage: string | null
 }
@@ -142,7 +145,17 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
         if (e.kind === 'decision.candidate') turn.decisions.push(e.data)
         else if (e.kind === 'behavior.candidate') turn.behaviors.push(e.data)
         else if (e.kind === 'analysis.run') turn.analysis = e.data
-        else turn.rules = e.data
+        else {
+          turn.rules = e.data
+          if (e.data.blocked) {
+            // The agent keeps working on the same turn until it stops again.
+            turn.sentBack++
+            turn.sentBackFor = e.data
+            turn.status = 'running'
+            turn.endedAt = null
+            openTurnBySession.set(sessionKey(e), turn)
+          }
+        }
         break
       }
       case 'prompt.submit': {
@@ -166,6 +179,8 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
           behaviors: [],
           analysis: null,
           rules: null,
+          sentBack: 0,
+          sentBackFor: null,
           lastMessage: null,
           waitingMessage: null,
         }

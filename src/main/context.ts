@@ -3,6 +3,8 @@ import type { AgentAdapter } from './features/agents'
 import type { BridgeServer } from './features/bridge'
 import type { ChangesService, Git } from './features/changes'
 import type { EventStore } from './features/events'
+import type { HealthService } from './features/health'
+import type { RulesService } from './features/rules'
 import type { ProjectRegistry } from './features/projects'
 import type { SettingsStore } from './features/settings'
 import type { PtyManager, TerminalService } from './features/terminal'
@@ -19,6 +21,8 @@ export interface AppContext {
   ptys: PtyManager
   terminals: TerminalService
   changes: ChangesService
+  rules: RulesService
+  health: HealthService
   watcher: ProjectWatcher
   env(): Promise<NodeJS.ProcessEnv>
   shellEnvResolved(): boolean

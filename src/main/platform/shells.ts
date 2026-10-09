@@ -26,3 +26,19 @@ export function defaultShell(env: NodeJS.ProcessEnv): ShellLaunch {
   const shell = getEnv(env, 'SHELL') || (isMac() ? '/bin/zsh' : '/bin/bash')
   return { file: shell, args: ['-l'], name: path.basename(shell) }
 }
+
+/** Runs a command line the user typed (e.g. a project's check command) through their shell. */
+export function shellCommand(
+  command: string,
+  env: NodeJS.ProcessEnv,
+): { file: string; args: string[]; verbatim: boolean } {
+  if (isWindows()) {
+    // cmd /s /c "<line>" keeps the user's own quoting intact.
+    return {
+      file: getEnv(env, 'ComSpec') ?? 'cmd.exe',
+      args: ['/d', '/s', '/c', `"${command}"`],
+      verbatim: true,
+    }
+  }
+  return { file: getEnv(env, 'SHELL') || '/bin/sh', args: ['-c', command], verbatim: false }
+}

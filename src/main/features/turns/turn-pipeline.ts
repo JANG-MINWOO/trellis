@@ -16,18 +16,27 @@ export interface TurnPipelineDeps {
   events: EventStore
   changes: ChangesService
   analyzer: TurnAnalyzer
-  /** Structure rules and the project's check command (M3). Null until available. */
+  /** Structure rules and the project's check command (M3). */
   guard:
     | ((project: Project, changes: TurnChanges, mayBlock: boolean) => Promise<GuardVerdict | null>)
     | null
+  /** Prepares the start-of-turn check while the agent works. */
+  warm?: (project: Project, startTree: string) => void
+  /** The end-of-turn check is running (the agent waits for it). */
+  onCheck?: (projectId: string, running: boolean) => void
 }
 
 export class TurnPipeline {
+  /** Turns the guard sent back; their final check is recorded even when it comes back clean. */
+  private readonly sentBack = new Set<string>()
+
   constructor(private readonly deps: TurnPipelineDeps) {}
 
   /** Called before the prompt hook is answered, so the snapshot predates the agent's work. */
-  onPrompt(project: Project, promptId: string): Promise<void> {
-    return this.deps.changes.beginTurn(project.id, project.path, promptId).catch(() => undefined)
+  async onPrompt(project: Project, promptId: string): Promise<void> {
+    await this.deps.changes.beginTurn(project.id, project.path, promptId).catch(() => undefined)
+    const tree = this.deps.changes.turnStartTree(project.id, promptId)
+    if (tree && project.guard.enforceRules) this.deps.warm?.(project, tree)
   }
 
   /**
@@ -44,8 +53,12 @@ export class TurnPipeline {
     if (project.guard.enforceRules && this.deps.guard && !stopHookActive) {
       const peek = await this.deps.changes.turnChanges(project.id, project.path, promptId, false)
       if (peek && peek.files.length > 0) {
-        const verdict = await this.deps.guard(project, peek, true)
+        this.deps.onCheck?.(project.id, true)
+        const verdict = await this.deps
+          .guard(project, peek, true)
+          .finally(() => this.deps.onCheck?.(project.id, false))
         if (verdict?.reason) {
+          this.sentBack.add(`${project.id}:${promptId}`)
           await this.append(project, stop, 'rules.check', { ...verdict.check, blocked: true })
           return { decision: 'block', reason: verdict.reason }
         }
@@ -68,9 +81,13 @@ export class TurnPipeline {
       truncated: changes.truncated,
     })
     if (changes.files.length === 0) return
+    const wasSentBack = this.sentBack.delete(`${project.id}:${stop.promptId}`)
     if (this.deps.guard) {
       const verdict = await this.deps.guard(project, changes, false).catch(() => null)
-      if (verdict && (verdict.check.newViolations.length > 0 || verdict.check.check)) {
+      if (
+        verdict &&
+        (verdict.check.newViolations.length > 0 || verdict.check.check || wasSentBack)
+      ) {
         await this.append(project, stop, 'rules.check', verdict.check)
       }
     }

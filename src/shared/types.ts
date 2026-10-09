@@ -274,7 +274,15 @@ export interface HealthReport {
   overThreshold: { path: string; lines: number }[]
   overThresholdCount: number
   densestFolders: { path: string; files: number }[]
+  /** Structure rules (M3). */
+  rules: RulesReport
+  /** Paths that living documents mention but that do not exist (M4). */
+  drift: DriftItem[]
+  trend: HealthTrend
 }
+
+/** HealthReport without what is computed around the engine. */
+export type HealthMetrics = Omit<HealthReport, 'computedAt' | 'rules' | 'drift' | 'trend'>
 
 export interface ToolStatus {
   found: boolean
@@ -385,9 +393,13 @@ export interface Violation {
   path: string
   /** Other paths involved (import target, duplicate partner, cycle members). */
   related: string[]
+  /** Custom text from the rule (boundaries); other rules are described by the UI. */
   message: string
   /** Stable identity across runs, used by the baseline (ratchet). */
   fingerprint: string
+  /** Measured size (lines, files, shared lines) and the limit, where the rule has one. */
+  size?: number
+  limit?: number
 }
 
 export interface RulesCheck {
@@ -429,10 +441,12 @@ export interface SpecList {
 
 export interface RulesReport {
   hasConfig: boolean
+  /** The rules file exists but could not be read; defaults are in use. */
+  configError: string | null
   hasBaseline: boolean
+  /** Violations not in the baseline (all of them when there is no baseline). */
   newViolations: Violation[]
-  frozenViolations: Violation[]
-  computedAt: number
+  frozenCount: number
 }
 
 export interface DriftItem {

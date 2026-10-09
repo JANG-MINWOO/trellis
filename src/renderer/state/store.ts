@@ -54,6 +54,8 @@ interface State {
   changesLoading: Record<string, boolean>
   /** A finished turn is being analyzed for decisions and behavior changes. */
   analyzing: Record<string, boolean>
+  /** The end-of-turn check (rules + check command) is running; the agent waits for it. */
+  checking: Record<string, boolean>
   baseline: Baseline
   fsTick: Record<string, number>
   rightTab: RightTab
@@ -109,6 +111,7 @@ export const useStore = create<State & Actions>()((set, get) => ({
   changes: {},
   changesLoading: {},
   analyzing: {},
+  checking: {},
   baseline: 'session',
   fsTick: {},
   rightTab: 'timeline',
@@ -171,6 +174,9 @@ export const useStore = create<State & Actions>()((set, get) => ({
           get().refreshChanges(event.projectId)
         }
       }),
+      api.rules.onCheckStatus(({ projectId, running }) =>
+        set((s) => ({ checking: { ...s.checking, [projectId]: running } })),
+      ),
       api.analysis.onStatus(({ projectId, running }) =>
         set((s) => ({ analyzing: { ...s.analyzing, [projectId]: running } })),
       ),

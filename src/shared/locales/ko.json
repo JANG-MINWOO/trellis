@@ -160,12 +160,12 @@
     "behaviors_other": "동작 변경 {{count}}",
     "violations_other": "규칙 위반 {{count}}",
     "checkFailed": "검사 실패",
-    "sentBack": "되돌려 보냄",
     "analysisFailed": "분석 실패",
     "prediction": "예측:",
     "predictionMatched": "예상한 곳만 바뀌었어요",
     "unpredicted": "예상 밖 변경 {{areas}}",
-    "untouched": "그대로인 곳 {{areas}}"
+    "untouched": "그대로인 곳 {{areas}}",
+    "sentBack_other": "되돌려 보냄 {{count}}회"
   },
   "changes": {
     "title": "변경",
@@ -237,18 +237,28 @@
     "computedAt": "{{time}} 기준",
     "files": "파일",
     "lines": "텍스트 줄",
-    "overThreshold": "{{lines}}줄 넘는 파일",
+    "overThreshold": "{{lines}}줄 넘는 코드 파일",
     "truncated": "파일이 너무 많아 일부만 계산했어요.",
     "largest": "가장 긴 파일",
     "densest": "파일이 많이 모인 폴더",
     "fileCount_other": "{{count}}개",
-    "upcoming": "다음 버전에서는 구조 규칙 검사, 기준선, 지난주 대비 나빠진 곳을 보여줘요."
+    "violations": "새 규칙 위반",
+    "trendNone": "하루 이상 지나면 지난번과 비교해 나빠진 곳을 보여줘요.",
+    "trendTitle": "{{since}}보다",
+    "trendOver": "긴 파일",
+    "trendViolations": "규칙 위반",
+    "trendLines": "줄 수",
+    "newlyOver": "새로 {{lines}}줄",
+    "driftTitle": "문서가 가리키는데 없는 경로 · {{count}}",
+    "driftHint": "지침 파일·README·명세가 말하는 경로가 실제로 없어요. 문서를 고치거나 코드가 옮겨진 곳을 알려 주세요."
   },
   "status": {
     "off": "Claude 꺼짐",
     "idle": "Claude 대기 중",
     "working": "Claude 작업 중",
-    "waiting": "Claude 확인 대기"
+    "waiting": "Claude 확인 대기",
+    "checking": "작업 끝 검사 중",
+    "analyzing": "작업 분석 중"
   },
   "settings": {
     "title": "설정",
@@ -307,7 +317,11 @@
     "riskAreasHint": "이 패턴에 맞는 파일이 바뀌면 분석과 상관없이 항상 확인을 요청해요. 한 줄에 하나씩.",
     "riskAreasReset": "기본값으로",
     "analysisModel": "분석 모델",
-    "analysisModelHint": "작업 분석에 쓰는 모델이에요. sonnet이 정확도와 속도의 균형이 좋고, haiku는 더 빠르고 가벼워요."
+    "analysisModelHint": "작업 분석에 쓰는 모델이에요. sonnet이 정확도와 속도의 균형이 좋고, haiku는 더 빠르고 가벼워요.",
+    "guard": "작업 끝 검사",
+    "guardHint": "Claude가 작업을 마칠 때 구조 규칙(이번 작업이 새로 만든 위반만)과 검사 명령을 돌려, 문제가 있으면 고치도록 Claude에게 되돌려 보내요. 한 턴에 한 번만 되돌려요.",
+    "checkCommand": "검사 명령",
+    "checkCommandHint": "작업 끝 검사 때 프로젝트 폴더에서 실행해요(예: npm test, pytest -q). 비우면 구조 규칙만 봐요. 100초가 넘으면 멈춰요."
   },
   "toast": {
     "editorFailed": "파일을 열지 못했어요. {{message}}",
@@ -392,5 +406,65 @@
     "noTest": "테스트 없음",
     "testHint": "테스트 이름이나 내용에 B-001처럼 항목 번호를 적으면 여기서 연결돼 보여요.",
     "generalArea": "공통"
+  },
+  "rules": {
+    "title": "구조 규칙",
+    "usingFile": ".trellis/rules.json 규칙 적용 중",
+    "usingDefaults": "기본 규칙으로 보는 중",
+    "frozen": "기준선에 얼려 둔 위반 {{count}}개",
+    "noBaseline": "기준선 없음",
+    "configError": "규칙 파일을 읽지 못해 기본 규칙을 쓰고 있어요: {{message}}",
+    "clean": "규칙 위반이 없어요.",
+    "cleanSinceBaseline": "기준선 이후 새로 생긴 위반이 없어요.",
+    "showAll": "{{count}}개 모두 보기",
+    "makeFiles": "규칙 파일 만들기",
+    "freeze": "기준선 얼리기",
+    "freezeHint": "지금 있는 위반을 알려진 빚으로 얼리면, 앞으로는 새로 생긴 것만 보여요.",
+    "freezeConfirm": "지금 있는 위반 {{count}}개를 .trellis/baseline.json에 기준선으로 남길까요? 저장소에 파일이 생기니 커밋해서 팀과 같이 쓰세요.",
+    "frozenToast": "위반 {{count}}개를 기준선으로 얼렸어요",
+    "name": {
+      "max-lines": "긴 파일",
+      "folder-size": "파일이 몰린 폴더",
+      "duplicate": "중복 코드",
+      "cycle": "순환 의존",
+      "boundary": "경계 위반"
+    },
+    "short": {
+      "maxLines": "{{size}}줄 / 기준 {{limit}}",
+      "folderSize": "코드 파일 {{size}}개 / 기준 {{limit}}",
+      "duplicate": "{{target}}와 약 {{size}}줄 같음",
+      "cycle": "파일 {{count}}개가 서로 참조",
+      "boundary": "→ {{target}}"
+    },
+    "maxLines": "{{path}}: {{size}}줄이에요 (기준 {{limit}}줄). 나눠 주세요.",
+    "folderSize": "{{path}}/: 코드 파일이 {{size}}개예요 (기준 {{limit}}개). 하위 폴더로 묶어 주세요.",
+    "duplicate": "{{path}}와 {{target}}에 같은 코드가 약 {{size}}줄 있어요. 한 곳으로 모아 주세요.",
+    "cycle": "순환 의존: {{files}}",
+    "boundary": "{{path}} → {{target}}: 규칙으로 막힌 의존이에요.",
+    "boundaryMessage": "{{path}} → {{target}}: {{message}}"
+  },
+  "guard": {
+    "intro": "[Trellis 검사] 이번 작업이 새로 만든 문제가 있어요. 고친 다음 작업을 마쳐 주세요. 규칙 파일(.trellis/)과 기준선은 고치지 말고, 규칙을 바꿔야 한다면 사람에게 물어 주세요.",
+    "more": "… 외 {{count}}개",
+    "checkFailed": "검사 명령 `{{command}}`이 실패했어요. 출력 끝부분:"
+  },
+  "templates": {
+    "title": "규칙과 의도 문서 시작하기",
+    "description": "이 프로젝트에 구조 규칙과 지침·결정·명세 문서의 뼈대를 만들어요. 이미 있는 파일은 건드리지 않아요.",
+    "stack": "감지한 스택: {{stack}}",
+    "stacks": {
+      "node": "Node.js / TypeScript",
+      "python": "Python",
+      "godot": "Godot",
+      "java": "Java / Kotlin",
+      "go": "Go",
+      "rust": "Rust",
+      "generic": "일반"
+    },
+    "exists": "이미 있음",
+    "preview": "미리 보기",
+    "note": "만든 파일은 저장소에 그대로 남아요. 내용을 고쳐서 커밋해 팀과 함께 쓰세요.",
+    "apply_other": "{{count}}개 만들기",
+    "written_other": "{{count}}개 파일을 만들었어요"
   }
 }

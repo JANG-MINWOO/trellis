@@ -6,6 +6,8 @@ import type { AppContext } from './context'
 import { claudeCodeAdapter } from './features/agents'
 import { TurnAnalyzer } from './features/analysis'
 import { BridgeServer } from './features/bridge'
+import { HealthService } from './features/health'
+import { RulesService } from './features/rules'
 import { ChangesService, Git } from './features/changes'
 import { EventStore } from './features/events'
 import { notifyForEvent } from './features/notify'
@@ -75,11 +77,14 @@ async function bootstrap(): Promise<void> {
     if (event.kind === 'prompt.submit' && event.promptId)
       await pipeline?.onPrompt(project, event.promptId)
     await events.append(event)
-    notifyForEvent(event, project.name, settings.get(), mainWindow)
     if (event.kind === 'turn.stop') {
       const active = Boolean((raw as { stop_hook_active?: unknown }).stop_hook_active)
-      return pipeline?.onStop(project, event, active)
+      const body = await pipeline?.onStop(project, event, active)
+      // A turn sent back by the guard is not finished; say so only when it really is.
+      if (!body) notifyForEvent(event, project.name, settings.get(), mainWindow)
+      return body
     }
+    notifyForEvent(event, project.name, settings.get(), mainWindow)
     return undefined
   })
   await bridge.start()
@@ -121,9 +126,39 @@ async function bootstrap(): Promise<void> {
     agent: () => terminalService.agentLaunch(),
     onStatus: (projectId, running) => send(Push.analysisStatus, { projectId, running }),
   })
-  pipeline = new TurnPipeline({ events, changes, analyzer, guard: null })
+  const rules = new RulesService(git, changes)
+  const health = new HealthService(rules, events)
+  pipeline = new TurnPipeline({
+    events,
+    changes,
+    analyzer,
+    // Runs the project's check command only when the turn can still be sent back (ADR-0027).
+    guard: async (project, turnChanges, mayBlock) => {
+      const { env } = await terminalService.agentLaunch()
+      const lang = project.recordLanguage ?? settings.get().language ?? 'en'
+      const verdict = await rules.turnVerdict(project, turnChanges, {
+        runCheck: mayBlock,
+        env,
+        lang,
+      })
+      if (!verdict) return null
+      return {
+        check: {
+          newViolations: verdict.newViolations,
+          frozenCount: verdict.frozenCount,
+          check: verdict.check,
+          blocked: false,
+        },
+        reason: verdict.reason,
+      }
+    },
+    warm: (project, tree) => rules.warm(project, tree),
+    onCheck: (projectId, running) => send(Push.checkStatus, { projectId, running }),
+  })
 
   const ctx: AppContext = {
+    rules,
+    health,
     dataDir,
     settings,
     registry,

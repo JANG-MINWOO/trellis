@@ -167,12 +167,13 @@
     "violations_one": "{{count}} rule break",
     "violations_other": "{{count}} rule breaks",
     "checkFailed": "Check failed",
-    "sentBack": "sent back",
     "analysisFailed": "Analysis failed",
     "prediction": "Prediction:",
     "predictionMatched": "only the expected areas changed",
     "unpredicted": "unexpected: {{areas}}",
-    "untouched": "unchanged: {{areas}}"
+    "untouched": "unchanged: {{areas}}",
+    "sentBack_one": "sent back {{count}} time",
+    "sentBack_other": "sent back {{count}} times"
   },
   "changes": {
     "title": "Changes",
@@ -249,19 +250,29 @@
     "computedAt": "as of {{time}}",
     "files": "Files",
     "lines": "Lines of text",
-    "overThreshold": "Files over {{lines}} lines",
+    "overThreshold": "Code files over {{lines}} lines",
     "truncated": "Too many files; only part of the project was measured.",
     "largest": "Longest files",
     "densest": "Most crowded folders",
     "fileCount_one": "{{count}} file",
     "fileCount_other": "{{count}} files",
-    "upcoming": "Next version: structure rules, baselines, and what got worse since last week."
+    "violations": "New rule violations",
+    "trendNone": "After a day, this shows what got worse since the last snapshot.",
+    "trendTitle": "Since {{since}}",
+    "trendOver": "Long files",
+    "trendViolations": "Violations",
+    "trendLines": "Lines",
+    "newlyOver": "now {{lines}} lines",
+    "driftTitle": "Paths in docs that do not exist · {{count}}",
+    "driftHint": "Instruction files, the README or specs mention paths that are gone. Update the docs or point them to where the code moved."
   },
   "status": {
     "off": "Claude off",
     "idle": "Claude idle",
     "working": "Claude working",
-    "waiting": "Claude waiting for you"
+    "waiting": "Claude waiting for you",
+    "checking": "Checking the work",
+    "analyzing": "Analyzing the turn"
   },
   "settings": {
     "title": "Settings",
@@ -320,7 +331,11 @@
     "riskAreasHint": "Changes to files matching these patterns always ask for a human check, with or without analysis. One per line.",
     "riskAreasReset": "Reset to defaults",
     "analysisModel": "Analysis model",
-    "analysisModelHint": "Model used for turn analysis. sonnet balances accuracy and speed; haiku is faster and lighter."
+    "analysisModelHint": "Model used for turn analysis. sonnet balances accuracy and speed; haiku is faster and lighter.",
+    "guard": "Check at the end of work",
+    "guardHint": "When Claude finishes, Trellis checks the structure rules (only violations this work introduced) and runs the check command; if something fails, Claude is sent back to fix it. At most once per turn.",
+    "checkCommand": "Check command",
+    "checkCommandHint": "Runs in the project folder during the end-of-work check (e.g. npm test, pytest -q). Leave empty for structure rules only. Stops after 100 seconds."
   },
   "toast": {
     "editorFailed": "Could not open the file. {{message}}",
@@ -406,5 +421,69 @@
     "noTest": "No test",
     "testHint": "Mention an item id such as B-001 in a test name or body to link it here.",
     "generalArea": "General"
+  },
+  "rules": {
+    "title": "Structure rules",
+    "usingFile": "Using .trellis/rules.json",
+    "usingDefaults": "Using default rules",
+    "frozen_one": "{{count}} violation frozen in the baseline",
+    "frozen_other": "{{count}} violations frozen in the baseline",
+    "noBaseline": "no baseline",
+    "configError": "Could not read the rules file; using defaults: {{message}}",
+    "clean": "No rule violations.",
+    "cleanSinceBaseline": "No new violations since the baseline.",
+    "showAll": "Show all {{count}}",
+    "makeFiles": "Create rules file",
+    "freeze": "Freeze baseline",
+    "freezeHint": "Freeze today's violations as known debt; from then on only new ones show.",
+    "freezeConfirm": "Record the {{count}} current violations as the baseline in .trellis/baseline.json? This adds a file to the repository; commit it to share with the team.",
+    "frozenToast_one": "Froze {{count}} violation as the baseline",
+    "frozenToast_other": "Froze {{count}} violations as the baseline",
+    "name": {
+      "max-lines": "Long files",
+      "folder-size": "Crowded folders",
+      "duplicate": "Duplicated code",
+      "cycle": "Import cycles",
+      "boundary": "Boundary breaks"
+    },
+    "short": {
+      "maxLines": "{{size}} lines / limit {{limit}}",
+      "folderSize": "{{size}} code files / limit {{limit}}",
+      "duplicate": "~{{size}} lines same as {{target}}",
+      "cycle": "{{count}} files import each other",
+      "boundary": "→ {{target}}"
+    },
+    "maxLines": "{{path}}: {{size}} lines (limit {{limit}}). Please split it.",
+    "folderSize": "{{path}}/: {{size}} code files (limit {{limit}}). Please group them into subfolders.",
+    "duplicate": "{{path}} and {{target}} share about {{size}} identical lines. Please keep one copy.",
+    "cycle": "Import cycle: {{files}}",
+    "boundary": "{{path}} → {{target}}: this dependency is not allowed by the rules.",
+    "boundaryMessage": "{{path}} → {{target}}: {{message}}"
+  },
+  "guard": {
+    "intro": "[Trellis check] This work introduced problems. Please fix them before finishing. Do not edit the rules (.trellis/) or the baseline; if a rule must change, ask the human.",
+    "more": "… and {{count}} more",
+    "checkFailed": "The check command `{{command}}` failed. End of its output:"
+  },
+  "templates": {
+    "title": "Start rules and intent docs",
+    "description": "Creates structure rules and starter instruction, decision and spec docs. Existing files are never touched.",
+    "stack": "Detected stack: {{stack}}",
+    "stacks": {
+      "node": "Node.js / TypeScript",
+      "python": "Python",
+      "godot": "Godot",
+      "java": "Java / Kotlin",
+      "go": "Go",
+      "rust": "Rust",
+      "generic": "General"
+    },
+    "exists": "exists",
+    "preview": "Preview",
+    "note": "The files stay in the repository. Edit them and commit to share with your team.",
+    "apply_one": "Create {{count}} file",
+    "apply_other": "Create {{count}} files",
+    "written_one": "Created {{count}} file",
+    "written_other": "Created {{count}} files"
   }
 }

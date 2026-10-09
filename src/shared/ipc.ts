@@ -5,6 +5,7 @@ import type {
   DecisionResolution,
   IntentData,
   SpecList,
+  TemplatePlan,
   EditorApp,
   Baseline,
   ChangeReport,
@@ -54,6 +55,9 @@ export const Invoke = {
   behaviorsFromIntent: 'behaviors:from-intent',
   projectAreas: 'projects:areas',
   healthGet: 'health:get',
+  rulesFreezeBaseline: 'rules:freeze-baseline',
+  templatesPlan: 'templates:plan',
+  templatesApply: 'templates:apply',
   watchProject: 'project:watch',
 } as const
 
@@ -74,6 +78,7 @@ export const Push = {
   settingsChanged: 'push:settings-changed',
   menuCommand: 'push:menu-command',
   analysisStatus: 'push:analysis-status',
+  checkStatus: 'push:check-status',
 } as const
 
 export type MenuCommand =
@@ -172,5 +177,15 @@ export interface TrellisApi {
   }
   analysis: { onStatus(cb: (status: { projectId: string; running: boolean }) => void): Unsubscribe }
   health: { get(projectId: string): Promise<HealthReport | null> }
+  rules: {
+    /** Accepts all current violations as known debt (.trellis/baseline.json). Returns the count. */
+    freezeBaseline(projectId: string): Promise<number>
+    onCheckStatus(cb: (status: { projectId: string; running: boolean }) => void): Unsubscribe
+  }
+  templates: {
+    /** Starter files for the project's stack; existing files are marked and never overwritten. */
+    plan(projectId: string): Promise<TemplatePlan>
+    apply(projectId: string, paths: string[]): Promise<{ written: string[] }>
+  }
   menu: { onCommand(cb: (command: MenuCommand) => void): Unsubscribe }
 }

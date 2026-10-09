@@ -32,4 +32,6 @@ export const DEFAULT_RISK_AREAS = [
   '.github/workflows/**',
   '**/Dockerfile',
   '**/.env*',
+  // Rules and baseline judge the agent's work; changing them is a human decision (ADR-0027).
+  '.trellis/**',
 ]

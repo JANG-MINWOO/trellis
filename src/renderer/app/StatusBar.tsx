@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Bot, GitBranch } from 'lucide-react'
+import { Spinner } from '../components/ui'
 import { cn } from '../lib/cn'
 import { useClaudeState, type ClaudeState } from '../state/derived'
 import { useActiveProject, useStore } from '../state/store'
@@ -18,6 +19,8 @@ export function StatusBar() {
   const appInfo = useStore((s) => s.appInfo)
   const setRightTab = useStore((s) => s.setRightTab)
   const state = useClaudeState(project?.id ?? null)
+  const checking = useStore((s) => (project ? !!s.checking[project.id] : false))
+  const analyzing = useStore((s) => (project ? !!s.analyzing[project.id] : false))
 
   return (
     <div className="flex h-6 shrink-0 items-center gap-4 border-t border-border bg-surface px-3 text-2xs text-fg-faint">
@@ -39,6 +42,12 @@ export function StatusBar() {
           <Bot size={11} />
           <span className={cn('h-1.5 w-1.5 rounded-full', DOT[state])} />
           {t(`status.${state}`)}
+        </span>
+      )}
+      {(checking || analyzing) && (
+        <span className="flex items-center gap-1.5" data-testid="background-work">
+          <Spinner size={10} />
+          {checking ? t('status.checking') : t('status.analyzing')}
         </span>
       )}
       <span className="ml-auto">

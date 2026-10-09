@@ -56,6 +56,22 @@ export function ProjectSettings({ project }: { project: Project }) {
           label={t('settings.analysisEnabled')}
         />
       </FieldRow>
+      <FieldRow label={t('settings.guard')} hint={t('settings.guardHint')} inline>
+        <Switch
+          checked={project.guard.enforceRules}
+          onCheckedChange={(enforceRules) => void updateProject({ guard: { enforceRules } })}
+          label={t('settings.guard')}
+        />
+      </FieldRow>
+      <FieldRow label={t('settings.checkCommand')} hint={t('settings.checkCommandHint')}>
+        <CommitInput
+          value={project.guard.checkCommand}
+          placeholder="npm test"
+          onCommit={(checkCommand) =>
+            void updateProject({ guard: { checkCommand: checkCommand.trim() } })
+          }
+        />
+      </FieldRow>
       <FieldRow
         label={t('settings.riskAreas')}
         hint={

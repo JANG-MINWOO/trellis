@@ -71,6 +71,14 @@ const api: TrellisApi = {
     fromIntent: (id, lines, area) => invoke(Invoke.behaviorsFromIntent, id, lines, area),
   },
   analysis: { onStatus: (cb) => subscribe(Push.analysisStatus, cb) },
+  rules: {
+    freezeBaseline: (id) => invoke(Invoke.rulesFreezeBaseline, id),
+    onCheckStatus: (cb) => subscribe(Push.checkStatus, cb),
+  },
+  templates: {
+    plan: (id) => invoke(Invoke.templatesPlan, id),
+    apply: (id, paths) => invoke(Invoke.templatesApply, id, paths),
+  },
   health: { get: (id) => invoke(Invoke.healthGet, id) },
   menu: { onCommand: (cb) => subscribe(Push.menuCommand, cb) },
 }

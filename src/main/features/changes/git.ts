@@ -39,6 +39,36 @@ export class Git {
     }
   }
 
+  /** Reads many blobs through one `git cat-file --batch`. Missing objects are left out. */
+  readBlobs(
+    cwd: string,
+    shas: readonly string[],
+    timeoutMs = 60_000,
+  ): Promise<Map<string, Buffer>> {
+    if (shas.length === 0) return Promise.resolve(new Map())
+    return new Promise((resolve, reject) => {
+      const child = spawn(this.executable, ['cat-file', '--batch'], {
+        cwd,
+        env: this.env(),
+        windowsHide: true,
+      })
+      const chunks: Buffer[] = []
+      const timer = setTimeout(() => child.kill(), timeoutMs)
+      child.stdout.on('data', (c: Buffer) => chunks.push(c))
+      child.stderr.resume()
+      child.on('error', (e) => {
+        clearTimeout(timer)
+        reject(e)
+      })
+      child.on('close', () => {
+        clearTimeout(timer)
+        resolve(parseBatch(Buffer.concat(chunks)))
+      })
+      child.stdin.on('error', () => undefined)
+      child.stdin.end(shas.join('\n') + '\n')
+    })
+  }
+
   private runWithInput(cwd: string, args: string[], options: GitRunOptions): Promise<string> {
     return new Promise((resolve, reject) => {
       const child = spawn(this.executable, args, {
@@ -64,4 +94,21 @@ export class Git {
       child.stdin.end(options.input)
     })
   }
+}
+
+/** Parses `git cat-file --batch` output: "<sha> <type> <size>\n<content>\n" or "<sha> missing\n". */
+export function parseBatch(out: Buffer): Map<string, Buffer> {
+  const blobs = new Map<string, Buffer>()
+  let pos = 0
+  while (pos < out.length) {
+    const nl = out.indexOf(10, pos)
+    if (nl < 0) break
+    const [sha, type, size] = out.subarray(pos, nl).toString('utf8').split(' ')
+    pos = nl + 1
+    if (!sha || type === 'missing' || size === undefined) continue
+    const length = Number(size)
+    if (type === 'blob') blobs.set(sha, out.subarray(pos, pos + length))
+    pos += length + 1
+  }
+  return blobs
 }
