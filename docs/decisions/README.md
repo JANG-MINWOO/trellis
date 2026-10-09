@@ -44,3 +44,9 @@
 | [0013](0013-claude-runs-as-pty-process.md) | Claude 탭은 셸 없이 claude를 직접 실행 | 채택 |
 | [0014](0014-changes-from-git-snapshots.md) | 변경은 git 임시 인덱스 스냅샷으로 계산한다 | 채택 |
 | [0015](0015-scrub-parent-agent-env.md) | 상위 에이전트 세션의 환경 변수는 지운다 | 채택 |
+| [0016](0016-turn-changes-from-git.md) | 턴별 변경도 git 스냅샷으로 계산한다 | 채택 |
+| [0017](0017-permission-mode-at-launch.md) | Claude 권한 방식은 실행할 때 고른다 | 채택 |
+| [0018](0018-multiple-tabs-per-project.md) | 한 프로젝트에 탭 여러 개 | 채택 |
+| [0019](0019-terminal-dom-renderer-default.md) | 터미널은 기본적으로 DOM 렌더러로 그린다 | 채택 |
+| [0020](0020-editor-chooser.md) | 편집기는 처음 열 때 한 번 묻는다 | 채택 |
+| [0021](0021-dev-loop-and-updates.md) | 개발 중 갱신은 install:local, 배포·자동 업데이트는 서명 후에 | 일부 제안 |
