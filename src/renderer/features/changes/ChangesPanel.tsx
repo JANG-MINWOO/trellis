@@ -5,7 +5,7 @@ import type { ChangeEntry, ChangeStatus } from '@shared/types'
 import { Button, EmptyState, IconButton, Notice, Segmented, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
-import { formatNumber, relativeTime, splitPath } from '../../lib/format'
+import { clockTime, formatNumber, relativeTime, splitPath } from '../../lib/format'
 import { useActiveProject, useStore } from '../../state/store'
 
 const STATUS_STYLE: Record<ChangeStatus, string> = {
@@ -126,7 +126,13 @@ export function ChangesPanel() {
           </span>
         )}
         {report.baseline === 'session' && report.baselineTakenAt && (
-          <span>· {t('changes.baselineAt', { time: relativeTime(report.baselineTakenAt) })}</span>
+          <span title={new Date(report.baselineTakenAt).toLocaleString()}>
+            ·{' '}
+            {t('changes.baselineAt', {
+              time: clockTime(report.baselineTakenAt),
+              ago: relativeTime(report.baselineTakenAt),
+            })}
+          </span>
         )}
       </div>
       {report.baselineFallback && (

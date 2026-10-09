@@ -37,6 +37,11 @@ export class ChangesService {
     /** Resolves once the login-shell environment (and with it git's location) is known. */
     private readonly git: () => Promise<Git | null>,
     private readonly projectsDir: string,
+    /**
+     * When this app run began. A baseline older than this belongs to an earlier run (e.g. before
+     * Trellis was restarted or updated) and must not be shown as "since Claude started".
+     */
+    private readonly runStartedAt = Date.now(),
   ) {}
 
   async repoInfo(root: string): Promise<RepoInfo | null> {
@@ -82,6 +87,7 @@ export class ChangesService {
           const stored = await readJson<StoredBaseline | null>(this.baselineFile(projectId), null)
           if (
             stored &&
+            stored.takenAt >= this.runStartedAt &&
             (await git.tryRun(info.top, ['cat-file', '-e', `${stored.tree}^{tree}`])) !== null
           ) {
             base = stored.tree

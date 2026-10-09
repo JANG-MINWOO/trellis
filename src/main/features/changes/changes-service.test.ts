@@ -75,6 +75,18 @@ describe('ChangesService', () => {
     ).toBe('')
   })
 
+  it('ignores a baseline left over from an earlier app run', async () => {
+    const root = repo()
+    const data = tempDir('trellis-data-')
+    await new ChangesService(async () => git, data).snapshotSession('p', root)
+    writeFileSync(path.join(root, 'README.md'), '# changed after the old run\n')
+    // Trellis restarts: the new run has not started Claude yet.
+    const restarted = new ChangesService(async () => git, data, Date.now() + 1000)
+    const report = await restarted.get('p', root, 'session')
+    expect(report.kind === 'ok' && report.baselineFallback).toBe(true)
+    expect(files(report)).toEqual(['M README.md'])
+  })
+
   it('falls back to HEAD when there is no session baseline', async () => {
     const root = repo()
     const service = new ChangesService(async () => git, tempDir('trellis-data-'))
