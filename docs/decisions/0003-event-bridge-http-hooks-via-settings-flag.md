@@ -19,3 +19,6 @@ Trellis가 claude를 실행할 때 `--settings <앱 데이터 폴더의 생성 �
 
 ## 결과와 대가
 Trellis 밖에서(또는 셸 탭에서 직접) 실행한 claude는 이벤트가 안 잡힌다. 진실은 git에서 계산하므로 변경 패널은 여전히 맞다. 셸 탭 자동 연결은 열린 질문(PLAN §13). Claude Code 2.1.294 기준으로 확인했고, 필드 이름 의존은 `src/main/features/agents/claude-code/`에만 둔다.
+
+## 덧붙임 (2026-10-09)
+대화형 모드에서 SessionStart는 HTTP 훅으로 오지 않는다(command 훅만 실행됨, 2.1.294 실측). 그래서 SessionStart는 훅 설정에서 빼고, Trellis가 claude를 띄울 때 직접 `session.start`(새 대화/이어서)를 기록한다. `/clear`·압축으로 인한 세션 시작은 잡히지 않는다.

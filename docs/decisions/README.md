@@ -50,3 +50,4 @@
 | [0019](0019-terminal-dom-renderer-default.md) | 터미널은 기본적으로 DOM 렌더러로 그린다 | 채택 |
 | [0020](0020-editor-chooser.md) | 편집기는 처음 열 때 한 번 묻는다 | 채택 |
 | [0021](0021-dev-loop-and-updates.md) | 개발 중 갱신은 install:local, 배포·자동 업데이트는 서명 후에 | 일부 제안 |
+| [0022](0022-composer-for-korean-ime.md) | Claude 탭 아래에 일반 입력창을 둔다 | 채택 |
