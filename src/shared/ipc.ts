@@ -52,6 +52,7 @@ export const Invoke = {
 export const Send = {
   terminalWrite: 'terminal:write',
   terminalResize: 'terminal:resize',
+  terminalPasteImage: 'terminal:paste-image',
 } as const
 
 /** Push channels from main to renderer (webContents.send ↔ ipcRenderer.on). */
@@ -101,7 +102,11 @@ export interface TrellisApi {
     watch(projectId: string | null): Promise<void>
     onFsChanged(cb: (projectId: string) => void): Unsubscribe
   }
-  files: { list(projectId: string, relDir: string): Promise<FileNode[]> }
+  files: {
+    list(projectId: string, relDir: string): Promise<FileNode[]>
+    /** Absolute path of a file dropped from Finder/Explorer ('' if it has none). */
+    pathForFile(file: File): string
+  }
   editor: {
     open(projectId: string, relPath: string): Promise<{ ok: boolean; message?: string }>
     /** Editors found on this computer. */
@@ -111,6 +116,8 @@ export interface TrellisApi {
     start(req: TerminalStartRequest): Promise<TerminalStartResult>
     write(terminalId: string, data: string): void
     resize(terminalId: string, cols: number, rows: number): void
+    /** Asks the agent to read the clipboard image (its own paste-image key). */
+    pasteImage(terminalId: string): void
     /** Ends the process; the tab stays and shows how to restart. */
     kill(terminalId: string): Promise<void>
     /** Ends the process and removes the tab. */

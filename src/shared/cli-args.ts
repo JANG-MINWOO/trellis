@@ -30,3 +30,12 @@ export function parseArgs(input: string): string[] {
   if (hasToken) args.push(current)
   return args
 }
+
+/**
+ * A file path as a terminal would type it after a drag and drop: backslash-escaped on macOS/Linux,
+ * double-quoted on Windows when it contains spaces.
+ */
+export function quotePathForTerminal(path: string, platform: 'darwin' | 'win32' | 'linux'): string {
+  if (platform === 'win32') return /\s/.test(path) ? `"${path}"` : path
+  return path.replace(/([ \\'"()&;$`!*?#<>|{}[\]])/g, '\\$1')
+}

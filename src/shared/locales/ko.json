@@ -302,6 +302,7 @@
   "composer": {
     "placeholder": "Claude에게 보낼 내용",
     "send": "보내기",
-    "hint": "Enter 보내기 · Shift+Enter 줄바꿈 · 비어 있을 때 Esc는 Claude 중단 · 메뉴 선택처럼 터미널을 직접 써야 하면 터미널을 클릭하세요"
+    "hint": "Enter 보내기 · Shift+Enter 줄바꿈 · 이미지는 붙여넣기, 파일은 끌어다 놓기 · 비어 있을 때 Esc는 Claude 중단 · 메뉴 선택은 터미널을 클릭해서",
+    "images_other": "이미지 {{count}}개를 Claude 입력칸에 첨부했어요. 보내면 함께 전송돼요."
   }
 }

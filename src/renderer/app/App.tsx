@@ -64,6 +64,16 @@ export function App() {
   useMenuCommands()
 
   useEffect(() => {
+    const block = (e: DragEvent): void => e.preventDefault()
+    window.addEventListener('dragover', block)
+    window.addEventListener('drop', block)
+    return () => {
+      window.removeEventListener('dragover', block)
+      window.removeEventListener('drop', block)
+    }
+  }, [])
+
+  useEffect(() => {
     const unsubscribe = useStore.getState().subscribe()
     void useStore.getState().boot()
     return unsubscribe

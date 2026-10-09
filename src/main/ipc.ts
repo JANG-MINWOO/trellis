@@ -109,6 +109,12 @@ export function registerIpc(ctx: AppContext): void {
   ipcMain.on(Send.terminalWrite, (_e, terminalId: unknown, data: unknown) => {
     if (typeof data === 'string') ctx.ptys.write(asString(terminalId), data)
   })
+  ipcMain.on(Send.terminalPasteImage, (_e, terminalId: unknown) => {
+    const id = asString(terminalId)
+    const keys =
+      ctx.ptys.get(id)?.kind === 'claude' ? ctx.adapter.imagePasteKeys(process.platform) : null
+    if (keys) ctx.ptys.write(id, keys)
+  })
   ipcMain.on(Send.terminalResize, (_e, terminalId: unknown, cols: unknown, rows: unknown) => {
     if (typeof cols === 'number' && typeof rows === 'number')
       ctx.ptys.resize(asString(terminalId), Math.floor(cols), Math.floor(rows))

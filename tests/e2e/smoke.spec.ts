@@ -93,6 +93,19 @@ test('launch card → claude session → per-turn changes, tabs, stop/restart, e
     await expect(turn).toContainText('fake-output.txt')
     await shot(win, '03-timeline')
 
+    // Pasting an image into the input box hands it to Claude's own image paste (a chip shows).
+    // After the turn on purpose: in the fake CLI's line mode, Ctrl+V would quote the next Enter.
+    await win.getByTestId('composer-input').evaluate((el) => {
+      const data = new DataTransfer()
+      data.items.add(
+        new File([new Uint8Array([137, 80, 78, 71])], 'shot.png', { type: 'image/png' }),
+      )
+      el.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
+      )
+    })
+    await expect(win.getByTestId('composer-images')).toBeVisible()
+
     await win.getByRole('tab', { name: /변경|Changes/ }).click()
     const changes = win.getByTestId('changes')
     await expect(changes).toContainText('fake-output.txt', { timeout: 20_000 })

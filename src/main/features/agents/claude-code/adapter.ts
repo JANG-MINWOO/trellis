@@ -100,6 +100,11 @@ export const claudeCodeAdapter: AgentAdapter = {
 
   normalize: normalizeClaudeHook,
 
+  // Documented shortcuts: Ctrl+V on macOS/Linux, Alt+V on Windows (Esc-prefixed in a terminal).
+  imagePasteKeys(platform) {
+    return platform === 'win32' ? '\x1bv' : '\x16'
+  },
+
   scrubInheritedEnv(env) {
     for (const key of Object.keys(env)) {
       const upper = key.toUpperCase()

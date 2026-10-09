@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CornerDownLeft } from 'lucide-react'
+import { CornerDownLeft, ImageIcon } from 'lucide-react'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
+import { clipboardHasOnlyImage, droppedPaths, hasFiles } from '../../lib/drop'
+import { useStore } from '../../state/store'
 import { pasteIntoTerminal } from './registry'
 
 const MAX_ROWS = 8
@@ -15,6 +17,10 @@ const MAX_ROWS = 8
 export function Composer({ terminalId, focusKey }: { terminalId: string; focusKey: number }) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
+  /** Images already handed to Claude's own input (they show there as [Image #N]). */
+  const [images, setImages] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const platform = useStore((s) => s.appInfo?.platform)
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -31,17 +37,56 @@ export function Composer({ terminalId, focusKey }: { terminalId: string; focusKe
   }, [text])
 
   const send = (): void => {
-    if (!text.trim()) return
-    if (!pasteIntoTerminal(terminalId, text)) return
+    if (!text.trim() && images === 0) return
+    if (text.trim() && !pasteIntoTerminal(terminalId, text)) return
     // A separate keystroke, so Claude treats it as "submit" rather than part of the paste.
     window.setTimeout(() => api.terminal.write(terminalId, '\r'), 60)
     setText('')
+    setImages(0)
     ref.current?.focus()
   }
 
+  const insertAtCursor = (insert: string): void => {
+    const el = ref.current
+    const start = el?.selectionStart ?? text.length
+    const end = el?.selectionEnd ?? text.length
+    setText(text.slice(0, start) + insert + text.slice(end))
+  }
+
   return (
-    <div className="border-t border-border bg-surface px-3 py-2" data-testid="composer">
-      <div className="flex items-end gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/15">
+    <div
+      className="border-t border-border bg-surface px-3 py-2"
+      data-testid="composer"
+      onDragOver={(e) => {
+        if (!hasFiles(e.dataTransfer)) return
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        setDragging(false)
+        const paths = droppedPaths(e.dataTransfer, platform)
+        if (paths.length === 0) return
+        e.preventDefault()
+        insertAtCursor(`${paths.join(' ')} `)
+        ref.current?.focus()
+      }}
+    >
+      {images > 0 && (
+        <div
+          className="mb-1.5 flex items-center gap-1.5 px-1 text-2xs text-accent"
+          data-testid="composer-images"
+        >
+          <ImageIcon size={12} />
+          {t('composer.images', { count: images })}
+        </div>
+      )}
+      <div
+        className={cn(
+          'flex items-end gap-2 rounded-lg border bg-surface-2 px-3 py-2 focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/15',
+          dragging ? 'border-accent border-dashed' : 'border-border',
+        )}
+      >
         <textarea
           ref={ref}
           rows={1}
@@ -49,6 +94,12 @@ export function Composer({ terminalId, focusKey }: { terminalId: string; focusKe
           spellCheck={false}
           placeholder={t('composer.placeholder')}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            if (!clipboardHasOnlyImage(e.clipboardData)) return
+            e.preventDefault()
+            api.terminal.pasteImage(terminalId)
+            setImages((n) => n + 1)
+          }}
           onKeyDown={(e) => {
             // Never act while the IME is still composing a syllable.
             if (e.nativeEvent.isComposing || e.keyCode === 229) return
@@ -66,11 +117,13 @@ export function Composer({ terminalId, focusKey }: { terminalId: string; focusKe
         <button
           type="button"
           onClick={send}
-          disabled={!text.trim()}
+          disabled={!text.trim() && images === 0}
           aria-label={t('composer.send')}
           className={cn(
             'flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors',
-            text.trim() ? 'bg-accent text-accent-fg hover:brightness-110' : 'text-fg-faint',
+            text.trim() || images > 0
+              ? 'bg-accent text-accent-fg hover:brightness-110'
+              : 'text-fg-faint',
           )}
         >
           <CornerDownLeft size={14} />

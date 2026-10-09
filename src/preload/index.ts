@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import { Invoke, Push, Send, type TrellisApi } from '@shared/ipc'
 
 function subscribe<T extends unknown[]>(channel: string, cb: (...args: T) => void): () => void {
@@ -28,7 +28,10 @@ const api: TrellisApi = {
     watch: (id) => invoke(Invoke.watchProject, id),
     onFsChanged: (cb) => subscribe(Push.projectFsChanged, cb),
   },
-  files: { list: (id, relDir) => invoke(Invoke.filesList, id, relDir) },
+  files: {
+    list: (id, relDir) => invoke(Invoke.filesList, id, relDir),
+    pathForFile: (file) => webUtils.getPathForFile(file),
+  },
   editor: {
     open: (id, rel) => invoke(Invoke.editorOpen, id, rel),
     list: () => invoke(Invoke.editorList),
@@ -38,6 +41,7 @@ const api: TrellisApi = {
     write: (terminalId, data) => ipcRenderer.send(Send.terminalWrite, terminalId, data),
     resize: (terminalId, cols, rows) =>
       ipcRenderer.send(Send.terminalResize, terminalId, cols, rows),
+    pasteImage: (terminalId) => ipcRenderer.send(Send.terminalPasteImage, terminalId),
     kill: (terminalId) => invoke(Invoke.terminalKill, terminalId),
     close: (terminalId) => invoke(Invoke.terminalClose, terminalId),
     list: () => invoke(Invoke.terminalList),

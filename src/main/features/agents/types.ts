@@ -36,4 +36,6 @@ export interface AgentAdapter {
    * from Claude Code). Left in place they make a new session think it is a sub-session.
    */
   scrubInheritedEnv(env: Record<string, string>): void
+  /** Keystroke that makes the agent read an image from the system clipboard, if it has one. */
+  imagePasteKeys(platform: NodeJS.Platform): string | null
 }

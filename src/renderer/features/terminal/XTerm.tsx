@@ -6,6 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Terminal } from '@xterm/xterm'
 import type { TerminalKind } from '@shared/types'
 import { api } from '../../lib/api'
+import { clipboardHasOnlyImage, droppedPaths, hasFiles } from '../../lib/drop'
 import { useStore } from '../../state/store'
 import { registerTerminal, unregisterTerminal } from './registry'
 import { darkTheme, DEFAULT_TERMINAL_FONT, lightTheme } from './terminal-theme'
@@ -108,6 +109,30 @@ export function XTerm({ terminalId, kind, visible, focusOnShow }: Props) {
     const resizeSub = term.onResize(({ cols, rows }) => api.terminal.resize(terminalId, cols, rows))
     registerTerminal(terminalId, term)
 
+    // Images: Claude reads the clipboard itself when it gets its paste-image key (Cmd+V would
+    // otherwise paste nothing). Dropped files are typed in as escaped paths, like other terminals.
+    const onPaste = (e: ClipboardEvent): void => {
+      if (kind !== 'claude' || !clipboardHasOnlyImage(e.clipboardData)) return
+      e.preventDefault()
+      e.stopPropagation()
+      api.terminal.pasteImage(terminalId)
+    }
+    const onDragOver = (e: DragEvent): void => {
+      if (!hasFiles(e.dataTransfer)) return
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+    }
+    const onDrop = (e: DragEvent): void => {
+      const paths = droppedPaths(e.dataTransfer, useStore.getState().appInfo?.platform)
+      if (paths.length === 0) return
+      e.preventDefault()
+      term.paste(`${paths.join(' ')} `)
+      term.focus()
+    }
+    host.addEventListener('paste', onPaste, true)
+    host.addEventListener('dragover', onDragOver)
+    host.addEventListener('drop', onDrop)
+
     const observer = new ResizeObserver(() => {
       if (!visibleRef.current) return
       requestAnimationFrame(() => {
@@ -123,6 +148,9 @@ export function XTerm({ terminalId, kind, visible, focusOnShow }: Props) {
     return () => {
       disposed = true
       observer.disconnect()
+      host.removeEventListener('paste', onPaste, true)
+      host.removeEventListener('dragover', onDragOver)
+      host.removeEventListener('drop', onDrop)
       offData()
       inputSub.dispose()
       binarySub.dispose()

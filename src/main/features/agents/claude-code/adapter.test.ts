@@ -78,6 +78,14 @@ describe('claudeCodeAdapter.scrubInheritedEnv', () => {
   })
 })
 
+describe('claudeCodeAdapter.imagePasteKeys', () => {
+  it('uses Ctrl+V on macOS/Linux and Alt+V on Windows', () => {
+    expect(claudeCodeAdapter.imagePasteKeys('darwin')).toBe('\x16')
+    expect(claudeCodeAdapter.imagePasteKeys('linux')).toBe('\x16')
+    expect(claudeCodeAdapter.imagePasteKeys('win32')).toBe('\x1bv')
+  })
+})
+
 describe('claudeCodeAdapter.isNothingToContinue', () => {
   it('recognizes the CLI message', () => {
     expect(

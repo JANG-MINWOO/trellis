@@ -309,6 +309,8 @@
   "composer": {
     "placeholder": "Message to Claude",
     "send": "Send",
-    "hint": "Enter to send · Shift+Enter for a new line · Esc when empty interrupts Claude · click the terminal for menus and other direct input"
+    "hint": "Enter to send · Shift+Enter for a new line · paste images, drop files · Esc when empty interrupts Claude · click the terminal for menus",
+    "images_one": "Attached {{count}} image to Claude’s input. It goes with your message.",
+    "images_other": "Attached {{count}} images to Claude’s input. They go with your message."
   }
 }
