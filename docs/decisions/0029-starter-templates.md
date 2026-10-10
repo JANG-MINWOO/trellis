@@ -2,7 +2,7 @@
 
 - 상태: 채택
 - 날짜: 2026-10-10
-- 결정한 사람: 에이전트 제안 (PLAN M3) → 미누 진행 승인
+- 결정한 사람: 에이전트 제안 (PLAN M3) → 미누 진행 승인, 미누 확인(2026-10-10)
 
 ## 결정
 건강 패널의 "규칙 파일 만들기"는 스택(package.json, pyproject, project.godot, pom.xml/gradle, go.mod, Cargo.toml)을 감지해 `.trellis/rules.json`, `AGENTS.md`, `CLAUDE.md`, 결정 폴더 README, 명세 폴더 README를 제안한다. 각 파일의 내용을 미리 보여주고, 사람이 고른 것 중 없는 파일만 만든다(이미 있으면 "이미 있음", 덮어쓰지 않음). `AGENTS.md`나 `CLAUDE.md` 중 하나라도 있으면 둘 다 건드리지 않고, 새로 만들 때 `CLAUDE.md`는 `@AGENTS.md` 한 줄(Claude Code의 가져오기)로 둔다.
