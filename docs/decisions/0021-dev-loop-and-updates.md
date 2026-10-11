@@ -7,7 +7,7 @@
 ## 결정
 - 개발 중: `npm run dev`(watch)로 바로 확인한다. 안정 빌드를 바꿀 때는 `npm run install:local` — dmg 없이 앱 폴더를 프로젝트 밖 임시 폴더에 만들어 `/Applications/Trellis.app`을 교체하고 임시 폴더는 지운다(저장소의 `dist/`에 남은 빌드가 Spotlight에 두 번째 Trellis로 보이던 문제 때문). Trellis가 실행 중이면 지금 빌드해 두고, 종료하는 순간 교체 후 다시 연다(Trellis 안의 Claude에서 실행해도 된다). 상태 바와 설정 정보에 `버전+커밋`을 보여 줘 어떤 빌드인지 항상 안다.
 - 남에게 줄 버전: `package.json` 버전을 올리고 `v*` 태그를 푸시하면 CI가 dmg·exe를 만들어 릴리스에 올린다(이미 구성됨).
-- 자동 업데이트(제안): electron-updater가 앱을 켤 때 릴리스의 `latest.yml`/`latest-mac.yml`을 읽어 새 버전을 받고 재시작 때 설치한다. 조건: ① macOS 자동 업데이트는 Developer ID 서명·공증이 필요하다(연 $99) ② 비공개 저장소의 릴리스는 토큰 없이 못 받으므로, 배포용 공개 릴리스 저장소나 정적 서버(S3/R2 등)를 둔다 ③ Windows는 서명 없이도 동작하지만 SmartScreen 경고가 뜬다.
+- 자동 업데이트(제안): electron-updater가 앱을 켤 때 릴리스의 `latest.yml`/`latest-mac.yml`을 읽어 새 버전을 받고 재시작 때 설치한다. 조건: ① macOS 자동 업데이트는 Developer ID 서명·공증이 필요하다(연 $99) ② 비공개 저장소의 릴리스는 토큰 없이 못 받으므로, 배포용 공개 릴리스 저장소나 정적 서버(S3/R2 등)를 둔다 → ADR-0030으로 저장소를 공개해 이 저장소의 Releases를 쓴다 ③ Windows는 서명 없이도 동작하지만 SmartScreen 경고가 뜬다.
 
 ## 이유
 매번 dmg를 지우고 다시 까는 것은 느리고, 개발 중에는 서명·업데이트 서버가 필요 없다. 자동 업데이트는 서명과 배포 채널이 정해져야 의미가 있다.

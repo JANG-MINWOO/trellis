@@ -2,7 +2,7 @@
 
 Claude Code 옆자리에서, AI가 코드를 짜는 동안 무엇을 왜 바꿨는지 사람이 계속 이해하고 책임질 수 있게 잡아 주는 데스크톱 앱입니다.
 
-*Keep the intent of your project understood while you work with AI agents.*
+*Keep the intent of your project understood while you work with AI agents.* [English README](README.en.md)
 
 터미널에서 Claude Code와 대화하는 경험은 그대로 두고, 그 옆에 이번 작업의 의도, 턴별 타임라인, 영역별로 묶인 변경, 결정 기록, 구조 건강을 보여 줍니다. 식물이 격자(trellis)를 타고 자라듯, 구조를 잡아 주면서 사람과 프로젝트가 같이 자라게 하자는 뜻으로 지은 이름입니다.
 
@@ -35,7 +35,7 @@ Trellis는 IDE가 아닙니다. 파일 내용이나 diff는 직접 보여 주지
 
 M2~M4를 구현했고, 실제 프로젝트에서 써 보며 버그를 잡는 단계입니다. 순서와 완료 기준은 [docs/PLAN.md](docs/PLAN.md) §8에 있습니다.
 
-- M5 v1 마감: 큰 저장소 성능(분석을 작업 스레드로), 코드 서명, 배포 채널과 자동 업데이트, 영어 README.
+- M5 v1 마감: 큰 저장소 성능(분석을 작업 스레드로), 코드 서명, 자동 업데이트.
 
 ## 어떻게 동작하나
 
@@ -109,4 +109,4 @@ Trellis로 Trellis를 개발할 때는 패키지된 안정 빌드에서 Claude�
 
 ## 라이선스
 
-비공개 저장소이고 라이선스는 아직 정하지 않았습니다(PLAN M5에서 결정).
+[MIT](LICENSE). 문서와 작업일지는 한국어로 쓰고, 코드와 주석은 영어로 씁니다.

@@ -34,11 +34,11 @@
 | [0003](0003-event-bridge-http-hooks-via-settings-flag.md) | 이벤트 브리지: `--settings`로 붙이는 HTTP 훅, 대상 저장소 무수정 | 채택 |
 | [0004](0004-ai-analysis-via-claude-headless.md) | AI 분석은 `claude -p` 헤드리스 | 채택 |
 | [0005](0005-claude-md-symlink-to-agents-md.md) | `CLAUDE.md`는 `AGENTS.md`의 심볼릭 링크 | 채택 |
-| [0006](0006-macos-windows-github-actions.md) | macOS·Windows 동시 지원, GitHub Actions 빌드 | 채택 |
+| [0006](0006-macos-windows-github-actions.md) | macOS·Windows 동시 지원, GitHub Actions 빌드 | 채택 (공개 여부는 0030으로 대체) |
 | [0007](0007-languages.md) | 언어: 저장소 문서·커밋은 한국어, 코드는 영어, 앱은 ko/en | 채택 |
 | [0008](0008-layout-b.md) | 레이아웃 B: 터미널 가운데, 패널 오른쪽 | 채택 |
 | [0009](0009-agnostic-core-with-adapters.md) | 스택·에이전트 무관 핵심 + 어댑터 | 채택 |
-| [0010](0010-personal-tool-first.md) | 개인 도구로 시작, 검증 후 제품화 결정 | 채택 |
+| [0010](0010-personal-tool-first.md) | 개인 도구로 시작, 검증 후 제품화 결정 | 채택 (오픈소스는 0030에서 앞당김) |
 | [0011](0011-stable-build-develops-dev-build.md) | 안정 빌드로 개발 빌드를 고친다 | 채택 |
 | [0012](0012-three-layer-intent-single-source.md) | 의도 레이어 3층, 원본 하나 | 채택 |
 | [0013](0013-claude-runs-as-pty-process.md) | Claude 탭은 셸 없이 claude를 직접 실행 | 채택 |
@@ -58,3 +58,4 @@
 | [0027](0027-guard-via-stop-hook-block.md) | 작업 끝 검사는 Stop 훅에 block으로 답해 되돌려 보낸다 | 채택 |
 | [0028](0028-health-snapshots-and-doc-drift.md) | 건강 추세는 하루 한 번 스냅샷, 문서 어긋남은 "살아 있는 문서"만 본다 | 채택 |
 | [0029](0029-starter-templates.md) | 시작 템플릿은 없는 파일만 만들고, 지침 원본은 하나로 둔다 | 채택 |
+| [0030](0030-public-repo-mit.md) | 저장소를 MIT 라이선스로 공개한다 | 채택 |
