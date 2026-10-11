@@ -5,7 +5,7 @@
   "description": "Keep the intent of your project understood while you work with AI agents.",
   "main": "./out/main/index.js",
   "author": "JANG-MINWOO",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true,
   "homepage": "https://github.com/JANG-MINWOO/trellis",
   "scripts": {
