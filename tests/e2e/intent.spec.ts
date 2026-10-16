@@ -73,7 +73,12 @@ test('intent → turn analysis → decision record and behavior spec', async () 
     await win.getByTestId('behavior-accept').click()
     await expect(win.getByTestId('specs')).toContainText('I-001')
     await shot(win, '14-specs')
-    expect(readdirSync(path.join(project, 'docs', 'specs')).sort()).toEqual(['notes.md', '공통.md'])
+    // The invariant's area is the UI word for "general", so it follows the machine's language.
+    const specFiles = readdirSync(path.join(project, 'docs', 'specs')).sort()
+    expect(specFiles).toContain('notes.md')
+    expect(specFiles.filter((f) => f !== 'notes.md')).toEqual([
+      expect.stringMatching(/^(공통|general)\.md$/),
+    ])
   } finally {
     await app.close()
   }
