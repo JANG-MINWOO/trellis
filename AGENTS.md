@@ -38,22 +38,24 @@ Claude Code, Codex 등 이 저장소에서 일하는 모든 에이전트와 사�
 
 ## 4. 구조 규칙 — dependency-cruiser가 집행한다 (`.dependency-cruiser.cjs`)
 
-- `src/shared/` — 순수 TypeScript. `electron`, Node 내장 모듈, `react`를 import하지 않는다. main과 renderer가 둘 다 쓴다.
-- `src/main/` — renderer·preload를 import하지 않는다.
-- `src/preload/` — `shared`만 import한다. 노출 API는 `src/shared/ipc.ts`의 계약을 따른다.
-- `src/renderer/` — main·preload를 import하지 않고 Node 내장 모듈을 쓰지 않는다(샌드박스). main과는 `window.trellis` API로만 통신한다.
-- **기능 단위 폴더**: `src/main/features/<기능>/`, `src/renderer/features/<기능>/`. 다른 기능의 내부 파일을 직접 import하지 않는다. 그 기능의 `index.ts`가 공개한 것만 쓴다.
+- `src/shared/` — 순수 TypeScript. 앱 계층, Node 내장 모듈, npm 패키지(`electron`, `react` 포함)를 import하지 않는다. main과 renderer가 둘 다 쓴다.
+- `src/main/` — renderer·preload를 import하지 않는다. `src/main/lib/`(파일·프로세스 같은 기반 코드)와 `src/main/platform/`(OS별 코드)은 기능이나 앱 연결 코드(`index.ts`, `ipc*.ts`)를 import하지 않는다.
+- `src/preload/` — `shared`와 `electron`만 import한다(Node 내장 모듈 금지). 노출 API는 `src/shared/ipc.ts`의 계약을 따른다.
+- `src/renderer/` — main·preload·`electron`을 import하지 않고 Node 내장 모듈을 쓰지 않는다(샌드박스). main과는 `window.trellis` API로만 통신한다. `renderer/lib/`와 `renderer/components/`는 기능(`features/`)이나 화면(`app/`)을 import하지 않는다.
+- **기능 단위 폴더**: `src/main/features/<기능>/`, `src/renderer/features/<기능>/`. 기능 밖(다른 기능, 앱 연결 코드, `state/` 등)에서는 그 기능의 `index.ts`가 공개한 것만 쓴다.
 - 순환 의존 금지.
-- 같은 코드가 세 번째로 필요해지면 `shared/` 또는 `renderer/lib/`로 옮긴다. 두 번째까지는 중복을 허용한다.
+- 같은 코드가 세 번째로 필요해지면 `shared/`, `main/lib/`, `renderer/lib/`(화면 부품이면 `renderer/components/ui/`)로 옮긴다. 두 번째까지는 중복을 허용한다.
 - 파일이 300줄을 넘으면 기능을 더하기 전에 나누는 것부터 제안한다.
 - 패턴을 미리 쌓지 않는다. 필요해질 때 추가하고, 추가하면 ADR을 남긴다.
 
 ## 5. 크로스 플랫폼 규칙 (macOS·Windows 동시 지원)
 
+`process.platform`과 `exec`/`execSync`는 ESLint가 막는다(`eslint.config.mjs`).
+
 - 경로는 `path` 모듈로만 다룬다. `/`나 `\\`를 하드코딩하지 않는다.
-- 셸 명령 문자열을 조립하지 않는다. 외부 프로세스는 `execFile`/node-pty에 argv 배열로 넘긴다.
+- 셸 명령 문자열을 조립하지 않는다. 외부 프로세스는 `execFile`/`spawn`/node-pty에 argv 배열로 넘긴다. 예외는 사용자가 적은 검사 명령 하나다(사용자의 셸로 실행, ADR-0027).
 - 저장소 스크립트는 Node(`scripts/*.mjs`)로 쓴다. bash 전용 스크립트를 만들지 않는다.
-- 실행 파일은 `src/main/platform/`의 탐색 함수(PATH + PATHEXT)로 찾는다.
+- 실행 파일은 `src/main/platform/which.ts`의 `findExecutable`(PATH + PATHEXT)로 찾고, `spawnTarget`으로 실행한다(Windows `.cmd`는 cmd.exe로 감싼다).
 - OS별 분기는 `src/main/platform/`에 모은다. 기능 코드에 `process.platform` 분기를 흩뿌리지 않는다.
 - 줄바꿈은 LF (`.gitattributes`).
 
@@ -69,7 +71,7 @@ Claude Code, Codex 등 이 저장소에서 일하는 모든 에이전트와 사�
 - TypeScript strict. 식별자와 주석은 영어. 주석은 "무엇"이 아니라 "왜"가 필요할 때만 쓴다.
 - Prettier + ESLint 설정을 따른다.
 - `src/shared/`의 순수 로직은 단위 테스트를 같이 쓴다(`*.test.ts`).
-- Claude Code에 의존하는 부분(훅 입력 필드, CLI 플래그)은 `src/main/features/agents/claude-code/`에만 둔다.
+- Claude Code에 의존하는 부분(훅 입력 필드, 알림 종류, CLI 플래그, 훅 응답 형식과 대기 시간)은 `src/main/features/agents/claude-code/`에만 둔다. 나머지 코드는 `AgentAdapter`와 정규화된 `TrellisEvent`만 본다. 대표적인 필드·플래그 이름은 ESLint가 막는다.
 
 ## 8. 커밋
 
