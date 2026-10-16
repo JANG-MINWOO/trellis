@@ -35,9 +35,10 @@ jobs:
         run: npm run check
       - name: Package
         run: npm run ${{ matrix.dist }}
-      - name: Smoke test (macOS, fake Claude CLI)
+      # The fake CLI is a shebang script, so these run on macOS only (they skip on Windows).
+      - name: E2E — launch, intent → decisions/specs, guard (macOS, fake Claude CLI)
         if: runner.os == 'macOS'
-        run: npx playwright test smoke
+        run: npx playwright test smoke intent guard
       - uses: actions/upload-artifact@v4
         with:
           name: trellis-${{ runner.os }}
