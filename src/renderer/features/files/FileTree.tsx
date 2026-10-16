@@ -4,16 +4,9 @@ import { ChevronRight, File, Folder, FolderOpen, RefreshCw } from 'lucide-react'
 import type { ChangeStatus, FileNode } from '@shared/types'
 import { IconButton, SectionLabel, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
+import { STATUS_TEXT } from '../../lib/change-status'
 import { cn } from '../../lib/cn'
 import { useActiveProject, useStore } from '../../state/store'
-
-const STATUS_COLOR: Record<ChangeStatus, string> = {
-  A: 'text-success',
-  M: 'text-warning',
-  D: 'text-danger',
-  R: 'text-info',
-  T: 'text-warning',
-}
 
 /** Remounts per project so expanded folders and cached listings never leak across projects. */
 export function FileTree() {
@@ -101,7 +94,7 @@ function ProjectFileTree() {
             aria-expanded={node.isDir ? isOpen : undefined}
             onClick={() => (node.isDir ? toggle(node.path) : void open(node.path))}
             className={cn(
-              'group flex h-[26px] items-center gap-1.5 rounded-md pr-2 text-[12.5px] hover:bg-surface-2',
+              'group flex h-6.5 items-center gap-1.5 rounded-md pr-2 text-row hover:bg-surface-2',
               node.ignored && 'opacity-45',
             )}
             style={{ paddingLeft: depth * 12 + 6 }}
@@ -113,7 +106,7 @@ function ProjectFileTree() {
                 className={cn('shrink-0 text-fg-faint transition-transform', isOpen && 'rotate-90')}
               />
             ) : (
-              <span className="w-[13px] shrink-0" />
+              <span className="w-3.25 shrink-0" />
             )}
             {node.isDir ? (
               isOpen ? (
@@ -125,12 +118,12 @@ function ProjectFileTree() {
               <File size={14} className="shrink-0 text-fg-faint" />
             )}
             <span
-              className={cn('min-w-0 flex-1 truncate', status ? STATUS_COLOR[status] : 'text-fg')}
+              className={cn('min-w-0 flex-1 truncate', status ? STATUS_TEXT[status] : 'text-fg')}
             >
               {node.name}
             </span>
             {status && (
-              <span className={cn('text-2xs font-semibold', STATUS_COLOR[status])}>{status}</span>
+              <span className={cn('text-2xs font-semibold', STATUS_TEXT[status])}>{status}</span>
             )}
             {!status && node.isDir && changed.dirs.has(node.path) && (
               <span className="h-1.5 w-1.5 rounded-full bg-warning" />

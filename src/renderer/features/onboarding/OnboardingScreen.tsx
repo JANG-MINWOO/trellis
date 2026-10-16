@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CircleCheck, CircleX, FolderPlus, Sprout } from 'lucide-react'
 import type { EnvironmentStatus, Language, PermissionMode, ToolStatus } from '@shared/types'
-import { Button, Select, Spinner } from '../../components/ui'
+import { Button, Spinner } from '../../components/ui'
 import { setLanguage } from '../../i18n'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { shortenHome } from '../../lib/format'
 import { useStore } from '../../state/store'
-import { PERMISSION_MODES } from '../terminal'
+import { PermissionSelect } from '../terminal'
 
 /** First run: pick a language, check that Claude Code and git are there, add a first folder. */
 export function OnboardingScreen() {
@@ -107,24 +107,7 @@ export function OnboardingScreen() {
               {t('onboarding.permissionHint')}
             </p>
             <div className="mt-3">
-              <Select
-                value={permission}
-                onChange={(e) => setPermission(e.target.value as PermissionMode)}
-              >
-                {PERMISSION_MODES.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {t(`permission.${mode}.label`)}
-                  </option>
-                ))}
-              </Select>
-              <p
-                className={cn(
-                  'mt-1.5 text-2xs leading-relaxed',
-                  permission === 'bypass' ? 'text-danger' : 'text-fg-faint',
-                )}
-              >
-                {t(`permission.${permission}.hint`)}
-              </p>
+              <PermissionSelect value={permission} onChange={setPermission} withHint />
             </div>
 
             <h2 className="mt-6 text-sm font-semibold text-fg">{t('onboarding.projectTitle')}</h2>

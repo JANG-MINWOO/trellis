@@ -3,12 +3,13 @@ import type { Language, Project } from '@shared/types'
 import { DEFAULT_RISK_AREAS } from '@shared/defaults'
 import { Button, FieldRow, Select, Switch } from '../../components/ui'
 import { api } from '../../lib/api'
+import { revealKey, useIsMac } from '../../state/derived'
 import { useStore } from '../../state/store'
 import { CommitInput, CommitLines } from './CommitInput'
 
 export function ProjectSettings({ project }: { project: Project }) {
   const { t } = useTranslation()
-  const appInfo = useStore((s) => s.appInfo)
+  const isMac = useIsMac()
   const refreshProjects = useStore((s) => s.refreshProjects)
 
   const updateProject = async (patch: Parameters<typeof api.projects.update>[1]): Promise<void> => {
@@ -27,7 +28,7 @@ export function ProjectSettings({ project }: { project: Project }) {
             {project.path}
           </code>
           <Button size="sm" onClick={() => void api.projects.reveal(project.id)}>
-            {t(appInfo?.platform === 'darwin' ? 'projects.revealMac' : 'projects.reveal')}
+            {t(revealKey('projects', isMac))}
           </Button>
         </div>
       </FieldRow>

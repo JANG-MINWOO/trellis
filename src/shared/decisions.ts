@@ -40,6 +40,17 @@ export function openCandidate<K extends 'decision.candidate' | 'behavior.candida
   return found
 }
 
+/**
+ * The "status" line of a decision record, read loosely: projects write it in their own language
+ * and often add a note ("채택 (일부는 ADR-0030으로 대체)").
+ */
+export function recordStatusKind(status: string | null): 'accepted' | 'proposed' | 'other' {
+  if (!status) return 'other'
+  if (/채택|accepted|approved/i.test(status)) return 'accepted'
+  if (/제안|proposed|draft/i.test(status)) return 'proposed'
+  return 'other'
+}
+
 /** "use-bcrypt-for-passwords"; keeps Korean letters so names stay readable. */
 export function slugify(title: string, fallback = 'decision'): string {
   const slug = title

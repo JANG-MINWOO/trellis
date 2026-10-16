@@ -62,8 +62,8 @@ Claude Code, Codex 등 이 저장소에서 일하는 모든 에이전트와 사�
 ## 6. UI 규칙
 
 - 화면 문자열은 하드코딩하지 않고 i18n 키를 쓴다(`src/shared/locales/ko.json`, `en.json` — main의 메뉴·대화상자도 같은 파일을 쓴다). 키를 추가하면 두 파일 모두에 넣는다.
-- 색·간격은 디자인 토큰(`src/renderer/styles/`의 CSS 변수와 Tailwind 테마)만 쓴다.
-- 기본 부품은 `src/renderer/components/ui/`를 재사용한다. 비슷한 부품을 새로 만들지 않는다.
+- 색·간격·글자 크기는 디자인 토큰(`src/renderer/styles/`의 CSS 변수와 Tailwind 테마, 간격은 0.25 단위 눈금)만 쓴다. 예외는 터미널의 ANSI 16색 하나다(`terminal-theme.ts`, 배경·글자·커서·선택 색은 토큰).
+- 기본 부품은 `src/renderer/components/ui/`를 재사용한다(파일 행 `PathRow`, 섹션 제목 `SectionLabel`, 빈 안내 `DashedNote` 등). 비슷한 부품을 새로 만들지 않는다. main에서 불러오는 데이터는 `renderer/lib/use-api.ts`의 `useApi`로 받는다.
 - Trellis는 IDE가 아니다. 편집기·파일 내용 보기·diff 뷰어를 만들지 않고 외부 편집기로 연다.
 
 ## 7. 코드 스타일

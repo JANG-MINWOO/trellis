@@ -7,9 +7,10 @@ import { Terminal } from '@xterm/xterm'
 import type { TerminalKind } from '@shared/types'
 import { api } from '../../lib/api'
 import { clipboardHasOnlyImage, droppedPaths, hasFiles } from '../../lib/drop'
+import { useIsMac } from '../../state/derived'
 import { useStore } from '../../state/store'
 import { registerTerminal, unregisterTerminal } from './registry'
-import { darkTheme, DEFAULT_TERMINAL_FONT, lightTheme } from './terminal-theme'
+import { DEFAULT_TERMINAL_FONT, terminalTheme } from './terminal-theme'
 
 interface Props {
   terminalId: string
@@ -30,7 +31,7 @@ export function XTerm({ terminalId, kind, visible, focusOnShow }: Props) {
   const fontFamily = useStore((s) => s.settings?.terminal.fontFamily || DEFAULT_TERMINAL_FONT)
   const isDark = useStore((s) => s.isDark)
   const gpu = useStore((s) => s.settings?.terminal.gpu ?? false)
-  const isMac = useStore((s) => s.appInfo?.platform === 'darwin')
+  const isMac = useIsMac()
 
   useEffect(() => {
     visibleRef.current = visible
@@ -51,7 +52,7 @@ export function XTerm({ terminalId, kind, visible, focusOnShow }: Props) {
       scrollback: 10_000,
       macOptionIsMeta: false,
       drawBoldTextInBrightColors: false,
-      theme: s.isDark ? darkTheme : lightTheme,
+      theme: terminalTheme(s.isDark),
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
@@ -202,7 +203,7 @@ export function XTerm({ terminalId, kind, visible, focusOnShow }: Props) {
     if (!term) return
     term.options.fontSize = fontSize
     term.options.fontFamily = fontFamily
-    term.options.theme = isDark ? darkTheme : lightTheme
+    term.options.theme = terminalTheme(isDark)
     if (visibleRef.current) {
       try {
         fitRef.current?.fit()

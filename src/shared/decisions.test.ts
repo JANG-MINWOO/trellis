@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   nextRecordName,
   openCandidate,
+  recordStatusKind,
   pendingDecisions,
   renderDecisionRecord,
   slugify,
@@ -115,5 +116,16 @@ describe('renderDecisionRecord', () => {
     )
     expect(guessed).toContain('AI가 짐작한 이유를 사람이 그대로 확인함')
     expect(guessed).toContain('## 결과와 대가')
+  })
+})
+
+describe('recordStatusKind', () => {
+  it('reads Korean and English status lines with notes', () => {
+    expect(recordStatusKind('채택')).toBe('accepted')
+    expect(recordStatusKind('Accepted (supersedes ADR-0002)')).toBe('accepted')
+    expect(recordStatusKind('일부 제안')).toBe('proposed')
+    expect(recordStatusKind('Draft')).toBe('proposed')
+    expect(recordStatusKind('대체됨 (ADR-0031)')).toBe('other')
+    expect(recordStatusKind(null)).toBe('other')
   })
 })

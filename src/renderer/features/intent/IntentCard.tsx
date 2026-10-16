@@ -115,7 +115,7 @@ export function IntentCard() {
       </div>
 
       {open && !editing && (
-        <div className="mt-1.5 space-y-1.5 pl-[19px] text-xs leading-relaxed">
+        <div className="mt-1.5 space-y-1.5 pl-4.75 text-xs leading-relaxed">
           {!data ? (
             <p className="text-fg-faint">{t('intent.empty')}</p>
           ) : data.goal || data.mustNot ? (

@@ -23,7 +23,7 @@ export function Dialog({
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" />
+        <D.Overlay className="fixed inset-0 z-40 bg-overlay backdrop-blur-[1px]" />
         <D.Content
           className={cn(
             'fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-[720px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop outline-none',

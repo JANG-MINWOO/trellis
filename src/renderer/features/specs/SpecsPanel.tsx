@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlaskConical, ListChecks } from 'lucide-react'
 import { pendingBehaviors } from '@shared/specs'
-import type { SpecList } from '@shared/types'
-import { Badge, EmptyState, Spinner } from '../../components/ui'
+import { Badge, DashedNote, EmptyState, SectionLabel, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
+import { useApi } from '../../lib/use-api'
 import { useActiveProject, useStore } from '../../state/store'
 import { BehaviorCard } from './BehaviorCard'
 
@@ -19,7 +19,6 @@ export function SpecsPanel() {
   const fsTick = useStore((s) => (project ? (s.fsTick[project.id] ?? 0) : 0))
   const openFile = useStore((s) => s.openFile)
   const toast = useStore((s) => s.toast)
-  const [specs, setSpecs] = useState<SpecList | null>(null)
   const projectId = project?.id
   const specsDir = project?.specsDir
   const pending = useMemo(() => (events ? pendingBehaviors(events) : []), [events])
@@ -28,16 +27,12 @@ export function SpecsPanel() {
     [events],
   )
 
-  useEffect(() => {
-    if (!projectId) return
-    let cancelled = false
-    void api.specs.list(projectId).then((next) => {
-      if (!cancelled) setSpecs(next)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, specsDir, fsTick, resolvedCount])
+  const [specs] = useApi(projectId ? () => api.specs.list(projectId) : null, [
+    projectId,
+    specsDir,
+    fsTick,
+    resolvedCount,
+  ])
 
   if (!project) return null
   const items = specs?.areas.flatMap((a) => a.items) ?? []
@@ -54,14 +49,12 @@ export function SpecsPanel() {
   return (
     <div data-testid="specs">
       <div className="space-y-2 p-3">
-        <h3 className="text-2xs font-semibold tracking-wide text-fg-faint uppercase">
+        <SectionLabel bare>
           {t('specs.pendingTitle')}{' '}
           {pending.length > 0 && <span className="text-warning">· {pending.length}</span>}
-        </h3>
+        </SectionLabel>
         {pending.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border px-3 py-3 text-xs leading-relaxed text-fg-faint">
-            {t('specs.noPending')}
-          </p>
+          <DashedNote>{t('specs.noPending')}</DashedNote>
         ) : (
           pending.map((b) => (
             <BehaviorCard

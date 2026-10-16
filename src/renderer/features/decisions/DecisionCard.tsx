@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, ShieldAlert, Sparkles } from 'lucide-react'
 import type { PendingDecision } from '@shared/decisions'
-import { Badge, Button, Textarea } from '../../components/ui'
+import { Badge, Button, PathRow, Textarea } from '../../components/ui'
 import { cn } from '../../lib/cn'
-import { relativeTime, splitPath } from '../../lib/format'
+import { relativeTime } from '../../lib/format'
 
 const RISK_TONE = { high: 'danger', medium: 'warning', low: 'neutral' } as const
 
@@ -68,7 +68,7 @@ export function DecisionCard({
         </span>
         <span className="ml-auto">{relativeTime(decision.ts)}</span>
       </div>
-      <h4 className="mt-1.5 text-[13px] leading-snug font-semibold text-fg">{decision.title}</h4>
+      <h4 className="mt-1.5 text-sm leading-snug font-semibold text-fg">{decision.title}</h4>
       {decision.what && (
         <p className="mt-1 text-xs leading-relaxed text-fg-muted">{decision.what}</p>
       )}
@@ -105,22 +105,11 @@ export function DecisionCard({
           )}
           {decision.files.length > 0 && (
             <ul className="space-y-0.5">
-              {decision.files.map((f) => {
-                const [name, dir] = splitPath(f)
-                return (
-                  <li key={f}>
-                    <button
-                      type="button"
-                      onClick={() => onOpenFile(f)}
-                      className="flex w-full items-baseline gap-1.5 rounded px-1 text-left hover:bg-surface-2"
-                      title={f}
-                    >
-                      <span className="text-fg">{name}</span>
-                      <span className="truncate text-2xs text-fg-faint">{dir}</span>
-                    </button>
-                  </li>
-                )
-              })}
+              {decision.files.map((f) => (
+                <li key={f}>
+                  <PathRow path={f} onOpen={() => onOpenFile(f)} />
+                </li>
+              ))}
             </ul>
           )}
         </div>

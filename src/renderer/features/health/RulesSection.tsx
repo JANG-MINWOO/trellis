@@ -3,10 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { FileCog, Snowflake } from 'lucide-react'
 import { violationText } from '@shared/rules'
 import type { RuleId, RulesReport, Violation } from '@shared/types'
-import { Badge, Button, Notice } from '../../components/ui'
-import { cn } from '../../lib/cn'
-import { splitPath } from '../../lib/format'
-import { SectionTitle } from './SectionTitle'
+import { Badge, Button, DashedNote, Notice, PathRow, SectionLabel } from '../../components/ui'
 
 const ORDER: RuleId[] = ['boundary', 'cycle', 'max-lines', 'duplicate', 'folder-size']
 const LIST_LIMIT = 8
@@ -38,8 +35,10 @@ export function RulesSection({
 
   return (
     <section data-testid="rules">
-      <SectionTitle
-        action={
+      <SectionLabel
+        bare
+        className="mt-5 mb-2"
+        actions={
           !rules.hasConfig && (
             <Button size="xs" variant="ghost" onClick={onTemplates} data-testid="templates-open">
               <FileCog size={11} />
@@ -49,7 +48,7 @@ export function RulesSection({
         }
       >
         {t('rules.title')}
-      </SectionTitle>
+      </SectionLabel>
       <p className="text-2xs leading-relaxed text-fg-faint">
         {rules.hasConfig ? t('rules.usingFile') : t('rules.usingDefaults')}
         {' · '}
@@ -64,9 +63,9 @@ export function RulesSection({
       )}
 
       {groups.length === 0 ? (
-        <p className="mt-2 rounded-md border border-dashed border-border px-3 py-2.5 text-xs text-fg-faint">
+        <DashedNote className="mt-2 py-2.5">
           {rules.hasBaseline ? t('rules.cleanSinceBaseline') : t('rules.clean')}
-        </p>
+        </DashedNote>
       ) : (
         <div className="mt-2 space-y-2.5">
           {groups.map(({ rule, items }) => {
@@ -80,35 +79,20 @@ export function RulesSection({
                   </Badge>
                 </div>
                 <ul className="mt-1 space-y-0.5">
-                  {shown.map((v) => {
-                    const [name, dir] = splitPath(v.path)
-                    return (
-                      <li key={v.fingerprint}>
-                        <button
-                          type="button"
-                          onClick={() => rule !== 'folder-size' && onOpen(v.path)}
-                          className={cn(
-                            'flex w-full min-w-0 items-baseline gap-1.5 rounded px-1.5 py-0.5 text-left text-xs',
-                            rule !== 'folder-size' && 'hover:bg-surface-2',
-                          )}
-                          title={
-                            [v.path, ...v.related].join('\n') + (v.message ? `\n${v.message}` : '')
-                          }
-                          data-testid="violation"
-                        >
-                          <span className="shrink-0 text-fg">
-                            {rule === 'folder-size' ? v.path : name}
-                          </span>
-                          {rule !== 'folder-size' && (
-                            <span className="min-w-0 truncate text-2xs text-fg-faint">{dir}</span>
-                          )}
-                          <span className="ml-auto shrink-0 text-2xs text-fg-muted">
-                            {v.message || describe(v)}
-                          </span>
-                        </button>
-                      </li>
-                    )
-                  })}
+                  {shown.map((v) => (
+                    <li key={v.fingerprint}>
+                      <PathRow
+                        path={v.path}
+                        whole={rule === 'folder-size'}
+                        onOpen={rule === 'folder-size' ? undefined : () => onOpen(v.path)}
+                        title={
+                          [v.path, ...v.related].join('\n') + (v.message ? `\n${v.message}` : '')
+                        }
+                        trailing={<span className="text-fg-muted">{v.message || describe(v)}</span>}
+                        testId="violation"
+                      />
+                    </li>
+                  ))}
                 </ul>
                 {items.length > LIST_LIMIT && expanded !== rule && (
                   <button

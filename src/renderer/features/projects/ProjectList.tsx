@@ -7,6 +7,7 @@ import { EmptyState, IconButton, SectionLabel } from '../../components/ui'
 import { api } from '../../lib/api'
 import { cn } from '../../lib/cn'
 import { shortenHome } from '../../lib/format'
+import { revealKey, useIsMac } from '../../state/derived'
 import { useStore } from '../../state/store'
 
 export function ProjectList() {
@@ -17,7 +18,7 @@ export function ProjectList() {
   const selectProject = useStore((s) => s.selectProject)
   const addProject = useStore((s) => s.addProject)
   const removeProject = useStore((s) => s.removeProject)
-  const isMac = useStore((s) => s.appInfo?.platform === 'darwin')
+  const isMac = useIsMac()
 
   const running = useMemo(() => {
     const set = new Set<string>()
@@ -56,7 +57,7 @@ export function ProjectList() {
                 if (window.confirm(t('projects.confirmRemove', { name: p.name })))
                   void removeProject(p.id)
               }}
-              revealLabel={t(isMac ? 'projects.revealMac' : 'projects.reveal')}
+              revealLabel={t(revealKey('projects', isMac))}
               removeLabel={t('projects.remove')}
               moreLabel={t('common.more')}
               runningLabel={t('projects.running')}

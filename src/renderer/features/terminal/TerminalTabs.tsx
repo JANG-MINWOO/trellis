@@ -82,7 +82,7 @@ export function TerminalTabs({
               {state && <span className={cn('h-1.5 w-1.5 rounded-full', DOT[state])} />}
               {terminal.permissionMode === 'bypass' && (
                 <span
-                  className="rounded bg-danger-soft px-1 text-[10px] font-semibold text-danger"
+                  className="rounded bg-danger-soft px-1 text-3xs font-semibold text-danger"
                   title={t('permission.bypass.label')}
                 >
                   !

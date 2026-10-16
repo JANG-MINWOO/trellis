@@ -13,6 +13,16 @@ import type {
   ThemePreference,
 } from './types'
 
+/** In the order the launch card offers them (ADR-0017). */
+export const PERMISSION_MODES: readonly PermissionMode[] = [
+  'claude-default',
+  'manual',
+  'acceptEdits',
+  'auto',
+  'plan',
+  'bypass',
+]
+
 const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   typeof value === 'string' && (allowed as readonly string[]).includes(value)
     ? (value as T)
@@ -48,7 +58,7 @@ export function normalizeSettings(raw: unknown): Settings {
       defaultMode: oneOf<LaunchMode>(claude.defaultMode, ['continue', 'new'], d.claude.defaultMode),
       permissionMode: oneOf<PermissionMode>(
         claude.permissionMode,
-        ['claude-default', 'manual', 'acceptEdits', 'auto', 'plan', 'bypass'],
+        PERMISSION_MODES,
         d.claude.permissionMode,
       ),
       // 0.1.0 had autoStart; the launch card now asks by default so permissions are a choice.

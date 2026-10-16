@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import type { HealthReport } from '@shared/types'
-import { Notice } from '../../components/ui'
+import { Notice, PathLabel, SectionLabel } from '../../components/ui'
 import { areaLabel } from '../../lib/area'
 import { cn } from '../../lib/cn'
-import { formatNumber, splitPath } from '../../lib/format'
-import { SectionTitle } from './SectionTitle'
+import { formatNumber } from '../../lib/format'
 
 /** Size indicators: counts, longest files, crowded folders. */
 export function HealthMetrics({
@@ -24,10 +23,11 @@ export function HealthMetrics({
         </Notice>
       )}
 
-      <SectionTitle>{t('health.largest')}</SectionTitle>
+      <SectionLabel bare className="mt-5 mb-2">
+        {t('health.largest')}
+      </SectionLabel>
       <ul className="space-y-1">
         {report.largestFiles.map((f) => {
-          const [name, dir] = splitPath(f.path)
           const over = f.lines > report.lineThreshold
           return (
             <li key={f.path}>
@@ -38,8 +38,7 @@ export function HealthMetrics({
                 title={f.path}
               >
                 <div className="flex items-baseline gap-1.5 text-xs">
-                  <span className="shrink-0 font-medium text-fg">{name}</span>
-                  <span className="min-w-0 flex-1 truncate text-2xs text-fg-faint">{dir}</span>
+                  <PathLabel path={f.path} grow nameClassName="font-medium" />
                   <span
                     className={cn(
                       'shrink-0 tabular-nums',
@@ -61,7 +60,9 @@ export function HealthMetrics({
         })}
       </ul>
 
-      <SectionTitle>{t('health.densest')}</SectionTitle>
+      <SectionLabel bare className="mt-5 mb-2">
+        {t('health.densest')}
+      </SectionLabel>
       <ul className="space-y-0.5">
         {report.densestFolders.map((d) => (
           <li

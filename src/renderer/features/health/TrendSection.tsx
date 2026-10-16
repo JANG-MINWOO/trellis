@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import type { DriftItem, HealthTrend } from '@shared/types'
+import { PathRow, SectionLabel } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import { formatNumber, relativeTime, splitPath } from '../../lib/format'
-import { SectionTitle } from './SectionTitle'
 
 function Delta({
   label,
@@ -42,7 +42,9 @@ export function TrendSection({
     return <p className="mt-3 text-2xs text-fg-faint">{t('health.trendNone')}</p>
   return (
     <section data-testid="trend">
-      <SectionTitle>{t('health.trendTitle', { since: relativeTime(trend.since) })}</SectionTitle>
+      <SectionLabel bare className="mt-5 mb-2">
+        {t('health.trendTitle', { since: relativeTime(trend.since) })}
+      </SectionLabel>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
         <Delta label={t('health.trendOver')} value={trend.deltas.overThreshold} />
         <Delta label={t('health.trendViolations')} value={trend.deltas.violations} />
@@ -50,25 +52,17 @@ export function TrendSection({
       </div>
       {trend.newlyOverThreshold.length > 0 && (
         <ul className="mt-2 space-y-0.5">
-          {trend.newlyOverThreshold.map((f) => {
-            const [name, dir] = splitPath(f.path)
-            return (
-              <li key={f.path}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(f.path)}
-                  className="flex w-full items-baseline gap-1.5 rounded px-1.5 py-0.5 text-left text-xs hover:bg-surface-2"
-                  title={f.path}
-                >
-                  <span className="text-fg">{name}</span>
-                  <span className="min-w-0 truncate text-2xs text-fg-faint">{dir}</span>
-                  <span className="ml-auto shrink-0 text-2xs text-warning">
-                    {t('health.newlyOver', { lines: f.lines })}
-                  </span>
-                </button>
-              </li>
-            )
-          })}
+          {trend.newlyOverThreshold.map((f) => (
+            <li key={f.path}>
+              <PathRow
+                path={f.path}
+                onOpen={() => onOpen(f.path)}
+                trailing={
+                  <span className="text-warning">{t('health.newlyOver', { lines: f.lines })}</span>
+                }
+              />
+            </li>
+          ))}
         </ul>
       )}
     </section>
@@ -87,7 +81,9 @@ export function DriftSection({
   if (drift.length === 0) return null
   return (
     <section data-testid="drift">
-      <SectionTitle>{t('health.driftTitle', { count: drift.length })}</SectionTitle>
+      <SectionLabel bare className="mt-5 mb-2">
+        {t('health.driftTitle', { count: drift.length })}
+      </SectionLabel>
       <p className="mb-1.5 text-2xs leading-relaxed text-fg-faint">{t('health.driftHint')}</p>
       <ul className="space-y-0.5">
         {drift.slice(0, 20).map((d) => (

@@ -49,3 +49,12 @@ export function useClaudeState(projectId: string | null): ClaudeState {
   if (!terminal?.running) return 'off'
   return deriveAgentState(timeline, terminal.sessionId)
 }
+
+/** macOS shows ⌘ shortcuts and "Finder"; the others Ctrl and "Explorer". */
+export function useIsMac(): boolean {
+  return useStore((s) => s.appInfo?.platform === 'darwin')
+}
+
+/** i18n key of the "show in Finder/Explorer" label in a section ('projects' | 'editors'). */
+export const revealKey = (section: 'projects' | 'editors', isMac: boolean): string =>
+  `${section}.${isMac ? 'revealMac' : 'reveal'}`

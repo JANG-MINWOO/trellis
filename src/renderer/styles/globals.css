@@ -25,6 +25,10 @@
   --info: #2f6fde;
   --info-soft: rgb(47 111 222 / 0.1);
   --terminal-bg: #ffffff;
+  --terminal-fg: #1f2328;
+  --terminal-selection: rgb(15 159 104 / 0.2);
+  --overlay: rgb(0 0 0 / 0.4);
+  --thumb: #ffffff;
   --shadow: 0 8px 30px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.08);
   color-scheme: light;
 }
@@ -50,6 +54,10 @@
   --info: #6aa7ff;
   --info-soft: rgb(106 167 255 / 0.12);
   --terminal-bg: #0f1012;
+  --terminal-fg: #dcdee3;
+  --terminal-selection: rgb(62 207 142 / 0.28);
+  --overlay: rgb(0 0 0 / 0.4);
+  --thumb: #ffffff;
   --shadow: 0 10px 40px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
@@ -79,9 +87,14 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-terminal: var(--terminal-bg);
+  --color-overlay: var(--overlay);
+  --color-thumb: var(--thumb);
   --shadow-pop: var(--shadow);
+  --text-3xs: 10px;
   --text-2xs: 11px;
   --text-xs: 12px;
+  /* Dense rows (file tree) and prompt text in turn cards. */
+  --text-row: 12.5px;
   --text-sm: 13px;
   --text-base: 14px;
   --animate-spin-slow: spin 1.4s linear infinite;

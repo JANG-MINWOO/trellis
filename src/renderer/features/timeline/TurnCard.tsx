@@ -9,19 +9,11 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { turnFiles, type TurnItem } from '@shared/timeline'
-import type { ChangeStatus } from '@shared/types'
-import { Badge, Spinner } from '../../components/ui'
+import { Badge, PathRow, Spinner } from '../../components/ui'
+import { STATUS_TEXT } from '../../lib/change-status'
 import { cn } from '../../lib/cn'
-import { clockTime, duration, splitPath } from '../../lib/format'
+import { clockTime, duration } from '../../lib/format'
 import { TurnInsights } from './TurnInsights'
-
-const STATUS_COLOR: Record<ChangeStatus, string> = {
-  A: 'text-success',
-  M: 'text-warning',
-  D: 'text-danger',
-  R: 'text-info',
-  T: 'text-warning',
-}
 
 export function TurnCard({
   turn,
@@ -72,7 +64,7 @@ export function TurnCard({
 
       <p
         className={cn(
-          'mt-1.5 text-[12.5px] leading-relaxed whitespace-pre-wrap text-fg',
+          'mt-1.5 text-row leading-relaxed whitespace-pre-wrap text-fg',
           !expanded && 'line-clamp-3',
         )}
       >
@@ -113,29 +105,22 @@ export function TurnCard({
 
       {files.length > 0 && (
         <ul className="mt-2 space-y-0.5">
-          {files.map((f) => {
-            const [name, dir] = splitPath(f.path)
-            return (
-              <li key={f.path}>
-                <button
-                  type="button"
-                  onClick={() => f.status !== 'D' && onOpenFile(f.path)}
-                  className="flex w-full min-w-0 items-baseline gap-1.5 rounded px-1 py-0.5 text-left text-xs hover:bg-surface-2"
-                  title={f.path}
-                >
-                  {f.status && (
-                    <span
-                      className={cn('w-3 shrink-0 text-[10px] font-bold', STATUS_COLOR[f.status])}
-                    >
+          {files.map((f) => (
+            <li key={f.path}>
+              <PathRow
+                path={f.path}
+                onOpen={f.status === 'D' ? undefined : () => onOpenFile(f.path)}
+                nameClassName="font-medium"
+                leading={
+                  f.status && (
+                    <span className={cn('w-3 shrink-0 text-3xs font-bold', STATUS_TEXT[f.status])}>
                       {f.status}
                     </span>
-                  )}
-                  <span className="shrink-0 font-medium text-fg">{name}</span>
-                  <span className="truncate text-2xs text-fg-faint">{dir}</span>
-                </button>
-              </li>
-            )
-          })}
+                  )
+                }
+              />
+            </li>
+          ))}
         </ul>
       )}
 

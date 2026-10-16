@@ -1,20 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NotebookPen, RefreshCw, Scale } from 'lucide-react'
-import { pendingDecisions } from '@shared/decisions'
-import type { DecisionList } from '@shared/types'
-import { Badge, Button, EmptyState, IconButton, Spinner } from '../../components/ui'
+import { pendingDecisions, recordStatusKind } from '@shared/decisions'
+import {
+  Badge,
+  Button,
+  DashedNote,
+  EmptyState,
+  IconButton,
+  SectionLabel,
+  Spinner,
+} from '../../components/ui'
 import { api } from '../../lib/api'
+import { useApi } from '../../lib/use-api'
 import { relativeTime } from '../../lib/format'
 import { useActiveProject, useStore } from '../../state/store'
 import { DecisionCard } from './DecisionCard'
 
-function statusTone(status: string | null): 'accent' | 'warning' | 'neutral' {
-  if (!status) return 'neutral'
-  if (/채택|accepted|approved/i.test(status)) return 'accent'
-  if (/제안|proposed|draft/i.test(status)) return 'warning'
-  return 'neutral'
-}
+const STATUS_TONE = { accepted: 'accent', proposed: 'warning', other: 'neutral' } as const
 
 /** Decisions found in turns, waiting for a human (M2), above the decisions already recorded. */
 export function DecisionsPanel() {
@@ -26,7 +29,6 @@ export function DecisionsPanel() {
   const openSettings = useStore((s) => s.openSettings)
   const openFile = useStore((s) => s.openFile)
   const toast = useStore((s) => s.toast)
-  const [list, setList] = useState<DecisionList | null>(null)
   const projectId = project?.id
   const decisionsDir = project?.decisionsDir
   const pending = useMemo(() => (events ? pendingDecisions(events) : []), [events])
@@ -45,16 +47,12 @@ export function DecisionsPanel() {
     }
   }, [events])
 
-  useEffect(() => {
-    if (!projectId) return
-    let cancelled = false
-    void api.decisions.list(projectId).then((next) => {
-      if (!cancelled) setList(next)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, decisionsDir, fsTick, resolvedCount])
+  const [list, reloadList] = useApi(projectId ? () => api.decisions.list(projectId) : null, [
+    projectId,
+    decisionsDir,
+    fsTick,
+    resolvedCount,
+  ])
 
   if (!project) return null
 
@@ -80,25 +78,25 @@ export function DecisionsPanel() {
   return (
     <div data-testid="decisions">
       <div className="space-y-2 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-2xs font-semibold tracking-wide text-fg-faint uppercase">
-            {t('decisions.pendingTitle')}{' '}
-            {pending.length > 0 && <span className="text-warning">· {pending.length}</span>}
-          </h3>
-          {analyzing && (
-            <span
-              className="flex items-center gap-1.5 text-2xs text-fg-faint"
-              data-testid="analyzing"
-            >
-              <Spinner size={11} />
-              {t('decisions.analyzing')}
-            </span>
-          )}
-        </div>
+        <SectionLabel
+          bare
+          actions={
+            analyzing && (
+              <span
+                className="flex items-center gap-1.5 text-2xs text-fg-faint"
+                data-testid="analyzing"
+              >
+                <Spinner size={11} />
+                {t('decisions.analyzing')}
+              </span>
+            )
+          }
+        >
+          {t('decisions.pendingTitle')}{' '}
+          {pending.length > 0 && <span className="text-warning">· {pending.length}</span>}
+        </SectionLabel>
         {pending.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border px-3 py-3 text-xs leading-relaxed text-fg-faint">
-            {analysisNote ?? t('decisions.noPending')}
-          </p>
+          <DashedNote>{analysisNote ?? t('decisions.noPending')}</DashedNote>
         ) : (
           pending.map((d) => (
             <DecisionCard
@@ -144,10 +142,7 @@ export function DecisionsPanel() {
               <span className="text-2xs text-fg-faint">
                 {list.dir} · {t('decisions.count', { count: list.docs.length })}
               </span>
-              <IconButton
-                label={t('common.refresh')}
-                onClick={() => void api.decisions.list(project.id).then(setList)}
-              >
+              <IconButton label={t('common.refresh')} onClick={reloadList}>
                 <RefreshCw size={13} />
               </IconButton>
             </div>
@@ -171,7 +166,11 @@ export function DecisionsPanel() {
                         <span className="min-w-0 flex-1 text-xs leading-snug font-medium text-fg">
                           {doc.title}
                         </span>
-                        {doc.status && <Badge tone={statusTone(doc.status)}>{doc.status}</Badge>}
+                        {doc.status && (
+                          <Badge tone={STATUS_TONE[recordStatusKind(doc.status)]}>
+                            {doc.status}
+                          </Badge>
+                        )}
                       </div>
                       <div className="mt-0.5 text-2xs text-fg-faint">
                         {relativeTime(doc.modifiedAt)}

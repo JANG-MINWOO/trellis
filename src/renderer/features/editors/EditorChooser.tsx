@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppWindow, FileCode, FolderOpen } from 'lucide-react'
-import type { EditorApp, SettingsPatch } from '@shared/types'
+import type { SettingsPatch } from '@shared/types'
 import { Dialog, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
+import { useApi } from '../../lib/use-api'
+import { revealKey, useIsMac } from '../../state/derived'
 import { useStore } from '../../state/store'
 
 /** Asked once, the first time a file is opened (or when the chosen editor disappears). */
@@ -13,19 +14,8 @@ export function EditorChooser() {
   const close = useStore((s) => s.closeEditorChooser)
   const updateSettings = useStore((s) => s.updateSettings)
   const openFile = useStore((s) => s.openFile)
-  const isMac = useStore((s) => s.appInfo?.platform === 'darwin')
-  const [editors, setEditors] = useState<EditorApp[] | null>(null)
-
-  useEffect(() => {
-    if (!request) return
-    let cancelled = false
-    void api.editor.list().then((list) => {
-      if (!cancelled) setEditors(list)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [request])
+  const isMac = useIsMac()
+  const [editors] = useApi(request ? () => api.editor.list() : null, [request])
 
   if (!request) return null
 
@@ -92,7 +82,7 @@ export function EditorChooser() {
             {option(
               'reveal',
               <FolderOpen size={16} />,
-              t(isMac ? 'editors.revealMac' : 'editors.reveal'),
+              t(revealKey('editors', isMac)),
               t('editors.revealHint'),
               () => void choose({ kind: 'reveal' }),
             )}

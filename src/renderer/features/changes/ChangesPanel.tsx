@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, GitBranch, GitCompareArrows, RefreshCw, RotateCcw } from 'lucide-react'
-import type { ChangeEntry, ChangeStatus } from '@shared/types'
-import { Button, EmptyState, IconButton, Notice, Segmented, Spinner } from '../../components/ui'
+import type { ChangeEntry } from '@shared/types'
+import {
+  Button,
+  EmptyState,
+  IconButton,
+  Notice,
+  PathLabel,
+  Segmented,
+  Spinner,
+} from '../../components/ui'
 import { api } from '../../lib/api'
 import { areaLabel } from '../../lib/area'
+import { STATUS_BADGE } from '../../lib/change-status'
 import { cn } from '../../lib/cn'
-import { clockTime, dateTime, formatNumber, relativeTime, splitPath } from '../../lib/format'
+import { clockTime, dateTime, formatNumber, relativeTime } from '../../lib/format'
 import { useActiveProject, useStore } from '../../state/store'
-
-const STATUS_STYLE: Record<ChangeStatus, string> = {
-  A: 'bg-accent-soft text-success',
-  M: 'bg-warning-soft text-warning',
-  D: 'bg-danger-soft text-danger',
-  R: 'bg-info-soft text-info',
-  T: 'bg-warning-soft text-warning',
-}
 
 export function ChangesPanel() {
   const { t } = useTranslation()
@@ -207,7 +208,6 @@ export function ChangesPanel() {
                   </button>
                   {!isCollapsed &&
                     group.files.map((f) => {
-                      const [name, dir] = splitPath(f.path)
                       return (
                         <button
                           key={f.path}
@@ -218,23 +218,20 @@ export function ChangesPanel() {
                         >
                           <span
                             className={cn(
-                              'flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold',
-                              STATUS_STYLE[f.status],
+                              'flex h-4 w-4 shrink-0 items-center justify-center rounded text-3xs font-bold',
+                              STATUS_BADGE[f.status],
                             )}
                           >
                             {f.status}
                           </span>
-                          <span
-                            className={cn(
-                              'shrink-0 text-xs',
-                              f.status === 'D' ? 'text-fg-faint line-through' : 'text-fg',
+                          <PathLabel
+                            path={f.path}
+                            grow
+                            nameClassName={cn(
+                              'text-xs',
+                              f.status === 'D' && 'text-fg-faint line-through',
                             )}
-                          >
-                            {name}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-2xs text-fg-faint">
-                            {dir}
-                          </span>
+                          />
                           {f.binary ? (
                             <span className="text-2xs text-fg-faint">{t('changes.binary')}</span>
                           ) : (

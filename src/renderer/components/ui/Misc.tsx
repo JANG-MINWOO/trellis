@@ -27,7 +27,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex h-[18px] shrink-0 items-center rounded px-1.5 text-2xs font-medium tabular-nums',
+        'inline-flex h-4.5 shrink-0 items-center rounded px-1.5 text-2xs font-medium tabular-nums',
         TONES[tone],
         className,
       )}
@@ -64,17 +64,29 @@ export function EmptyState({
   )
 }
 
+/**
+ * Small uppercase heading of a section. `bare` drops the bar's height and padding, for headings
+ * inside panels that already have their own spacing.
+ */
 export function SectionLabel({
   children,
   actions,
+  bare = false,
   className,
 }: {
   children: ReactNode
   actions?: ReactNode
+  bare?: boolean
   className?: string
 }) {
   return (
-    <div className={cn('flex h-8 shrink-0 items-center justify-between gap-2 px-3', className)}>
+    <div
+      className={cn(
+        'flex shrink-0 items-center justify-between gap-2',
+        !bare && 'h-8 px-3',
+        className,
+      )}
+    >
       <span className="truncate text-2xs font-semibold tracking-wide text-fg-faint uppercase">
         {children}
       </span>
@@ -102,5 +114,19 @@ export function Notice({
     <div className={cn('rounded-md px-2.5 py-2 text-xs leading-relaxed', toneClass, className)}>
       {children}
     </div>
+  )
+}
+
+/** Quiet dashed box for "nothing here yet" inside a panel section. */
+export function DashedNote({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <p
+      className={cn(
+        'rounded-md border border-dashed border-border px-3 py-3 text-xs leading-relaxed text-fg-faint',
+        className,
+      )}
+    >
+      {children}
+    </p>
   )
 }

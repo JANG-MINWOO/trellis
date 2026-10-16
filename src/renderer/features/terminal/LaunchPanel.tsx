@@ -1,19 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Play, RotateCcw, ShieldAlert } from 'lucide-react'
+import { Play, RotateCcw } from 'lucide-react'
 import type { PermissionMode } from '@shared/types'
-import { Button, Select } from '../../components/ui'
+import { Button } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import { useStore } from '../../state/store'
-
-export const PERMISSION_MODES: PermissionMode[] = [
-  'claude-default',
-  'manual',
-  'acceptEdits',
-  'auto',
-  'plan',
-  'bypass',
-]
+import { PermissionSelect } from './PermissionSelect'
 
 /** Choose how Claude asks for permission, then continue the last conversation or start a new one. */
 export function LaunchPanel({
@@ -62,26 +54,12 @@ export function LaunchPanel({
       <label className="mb-1.5 block text-xs font-medium text-fg-muted">
         {t('launch.permission')}
       </label>
-      <Select
+      <PermissionSelect
         value={permission}
-        onChange={(e) => setPermission(e.target.value as PermissionMode)}
-        data-testid="permission-select"
-      >
-        {PERMISSION_MODES.map((mode) => (
-          <option key={mode} value={mode}>
-            {t(`permission.${mode}.label`)}
-          </option>
-        ))}
-      </Select>
-      <p
-        className={cn(
-          'mt-1.5 flex gap-1.5 text-2xs leading-relaxed',
-          permission === 'bypass' ? 'text-danger' : 'text-fg-faint',
-        )}
-      >
-        {permission === 'bypass' && <ShieldAlert size={12} className="mt-px shrink-0" />}
-        {t(`permission.${permission}.hint`)}
-      </p>
+        onChange={setPermission}
+        withHint
+        testId="permission-select"
+      />
       <div className="mt-4 flex gap-2">
         <Button
           variant="primary"

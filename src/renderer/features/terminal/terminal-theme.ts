@@ -3,12 +3,9 @@ import type { ITheme } from '@xterm/xterm'
 export const DEFAULT_TERMINAL_FONT =
   '"JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, "Cascadia Mono", "D2Coding", "Apple SD Gothic Neo", "Malgun Gothic", monospace'
 
-export const darkTheme: ITheme = {
-  background: '#0f1012',
-  foreground: '#dcdee3',
-  cursor: '#3ecf8e',
-  cursorAccent: '#0f1012',
-  selectionBackground: 'rgba(62, 207, 142, 0.28)',
+// The 16 ANSI colors are the terminal's own palette, tuned for program output; they are the one
+// exception to "colors come from the design tokens". Everything else follows globals.css.
+const DARK_ANSI: ITheme = {
   black: '#1d1e22',
   red: '#f2707a',
   green: '#3ecf8e',
@@ -27,12 +24,7 @@ export const darkTheme: ITheme = {
   brightWhite: '#ffffff',
 }
 
-export const lightTheme: ITheme = {
-  background: '#ffffff',
-  foreground: '#1f2328',
-  cursor: '#0f9f68',
-  cursorAccent: '#ffffff',
-  selectionBackground: 'rgba(15, 159, 104, 0.2)',
+const LIGHT_ANSI: ITheme = {
   black: '#24292f',
   red: '#cf222e',
   green: '#116329',
@@ -49,4 +41,19 @@ export const lightTheme: ITheme = {
   brightMagenta: '#a475f9',
   brightCyan: '#3192aa',
   brightWhite: '#8c959f',
+}
+
+const token = (name: string): string =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+
+/** Read after the theme class is applied, so the colors match the rest of the app. */
+export function terminalTheme(dark: boolean): ITheme {
+  return {
+    ...(dark ? DARK_ANSI : LIGHT_ANSI),
+    background: token('--terminal-bg'),
+    foreground: token('--terminal-fg'),
+    cursor: token('--accent'),
+    cursorAccent: token('--terminal-bg'),
+    selectionBackground: token('--terminal-selection'),
+  }
 }
