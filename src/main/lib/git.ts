@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { execFileText } from '../../lib/exec'
+import { execFileText } from './exec'
 
 export const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 

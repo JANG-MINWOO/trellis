@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { nextRecordName, pendingDecisions, renderDecisionRecord, slugify } from './decisions'
+import {
+  nextRecordName,
+  openCandidate,
+  pendingDecisions,
+  renderDecisionRecord,
+  slugify,
+} from './decisions'
 import type { DecisionCandidate, TrellisEvent } from './types'
 
 const candidate = (id: string): DecisionCandidate => ({
@@ -43,6 +49,32 @@ describe('pendingDecisions', () => {
       },
     ]
     expect(pendingDecisions(events).map((d) => d.candidateId)).toEqual(['b'])
+  })
+})
+
+describe('openCandidate', () => {
+  it('finds an unanswered candidate and ignores answered ones', () => {
+    const events: TrellisEvent[] = [
+      { ...base, id: '1', ts: 1, kind: 'decision.candidate', data: candidate('a') },
+      { ...base, id: '2', ts: 2, kind: 'decision.candidate', data: candidate('b') },
+      {
+        ...base,
+        id: '3',
+        ts: 3,
+        kind: 'decision.resolved',
+        data: {
+          candidateId: 'a',
+          resolution: 'accepted',
+          reason: 'r',
+          reasonFromGuess: false,
+          docPath: null,
+        },
+      },
+    ]
+    expect(openCandidate(events, 'decision.candidate', 'b')?.id).toBe('2')
+    expect(openCandidate(events, 'decision.candidate', 'a')).toBeNull()
+    expect(openCandidate(events, 'decision.candidate', 'zz')).toBeNull()
+    expect(openCandidate(events, 'behavior.candidate', 'b')).toBeNull()
   })
 })
 

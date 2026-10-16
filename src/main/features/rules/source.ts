@@ -3,7 +3,9 @@
 // that share most files reads and parses each file once.
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { Git, RepoInfo } from '../changes'
+import type { Git } from '../../lib/git'
+import type { RepoInfo } from '../changes'
+import { BASELINE_FILE, RULES_FILE } from './config'
 import type { AnalyzedFile } from './engine'
 import { extractFacts, langOf, type FileFacts } from './facts'
 
@@ -40,7 +42,7 @@ export interface Listing {
 }
 
 const isConfig = (p: string): boolean =>
-  p === '.trellis/rules.json' || p === '.trellis/baseline.json' || /^tsconfig[^/]*\.json$/.test(p)
+  p === RULES_FILE || p === BASELINE_FILE || /^tsconfig[^/]*\.json$/.test(p)
 
 export class FactsCache {
   private readonly map = new Map<string, FileFacts | null>()

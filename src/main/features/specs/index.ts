@@ -1,1 +1,2 @@
-export { applyBehavior, listSpecs } from './spec-store'
+export { listSpecs } from './spec-store'
+export { invariantsFromIntent, resolveBehavior } from './resolve-behavior'

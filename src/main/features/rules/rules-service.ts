@@ -2,11 +2,13 @@
 // human-approved baseline of violations that are accepted for the time being (ADR-0026, 0027).
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { dirPrefix } from '@shared/rel-path'
 import type { Language, Project, RulesReport, Violation } from '@shared/types'
 import { writeJsonAtomic } from '../../lib/json-file'
 import { logFailure } from '../../lib/log'
 import { resolveInsideProject } from '../../platform/paths'
-import type { ChangesService, Git, RepoInfo, TurnChanges } from '../changes'
+import type { Git } from '../../lib/git'
+import type { ChangesService, RepoInfo, TurnChanges } from '../changes'
 import { runCheckCommand } from './check-command'
 import { BASELINE_FILE, parseRulesConfig, RULES_FILE, type RulesConfig } from './config'
 import { analyze, type Analysis } from './engine'
@@ -55,7 +57,7 @@ function readSettings(configs: Map<string, string>): RuleSettings {
 
 /** Documents that describe the project as it is now (not history like worklogs or ADRs). */
 function livingDocs(project: Project): (p: string) => boolean {
-  const specs = project.specsDir ? `${project.specsDir.replace(/\/$/, '')}/` : null
+  const specs = dirPrefix(project.specsDir)
   return (p) => {
     if (!/\.mdx?$/i.test(p)) return false
     if (!p.includes('/')) return true

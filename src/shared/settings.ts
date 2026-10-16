@@ -6,6 +6,7 @@ import type {
   Language,
   LaunchMode,
   PermissionMode,
+  Project,
   ProjectPatch,
   Settings,
   SettingsPatch,
@@ -125,4 +126,17 @@ export function normalizeProjectPatch(raw: unknown): ProjectPatch {
     if (Object.keys(guard).length > 0) patch.guard = guard
   }
   return patch
+}
+
+/** Language of Trellis' own menus, dialogs and notifications (English until one is chosen). */
+export function uiLanguage(settings: Settings): Language {
+  return settings.language ?? 'en'
+}
+
+/** Language of the records Trellis writes into a project. */
+export function recordLanguageOf(
+  project: Pick<Project, 'recordLanguage'>,
+  settings: Settings,
+): Language {
+  return project.recordLanguage ?? uiLanguage(settings)
 }

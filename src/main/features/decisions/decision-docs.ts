@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { joinRel } from '@shared/rel-path'
 import type { DecisionDoc, DecisionList } from '@shared/types'
 import { resolveInsideProject } from '../../platform/paths'
 
@@ -27,7 +28,7 @@ export async function listDecisionDocs(root: string, dir: string): Promise<Decis
       const head = text.slice(0, 4000)
       const title = /^#\s+(.+)$/m.exec(head)?.[1]?.trim() ?? name.replace(/\.md$/i, '')
       docs.push({
-        path: `${dir.replace(/\/$/, '')}/${name}`,
+        path: joinRel(dir, name),
         title,
         status: STATUS_LINE.exec(head)?.[1] ?? null,
         modifiedAt: stat.mtimeMs,

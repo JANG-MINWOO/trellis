@@ -1,7 +1,7 @@
 import type { BrowserWindow } from 'electron'
 import type { AgentAdapter } from './features/agents'
 import type { BridgeServer } from './features/bridge'
-import type { ChangesService, Git } from './features/changes'
+import type { ChangesService } from './features/changes'
 import type { EventStore } from './features/events'
 import type { HealthService } from './features/health'
 import type { RulesService } from './features/rules'
@@ -9,6 +9,7 @@ import type { ProjectRegistry } from './features/projects'
 import type { SettingsStore } from './features/settings'
 import type { PtyManager, TerminalService } from './features/terminal'
 import type { ProjectWatcher } from './features/watcher'
+import type { Git } from './lib/git'
 
 /** Services wired together at startup; passed to IPC handlers. */
 export interface AppContext {

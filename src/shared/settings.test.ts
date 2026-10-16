@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from './defaults'
-import { applySettingsPatch, normalizeProjectPatch, normalizeSettings } from './settings'
+import {
+  applySettingsPatch,
+  normalizeProjectPatch,
+  normalizeSettings,
+  recordLanguageOf,
+  uiLanguage,
+} from './settings'
 
 describe('normalizeSettings', () => {
   it('fills defaults for an empty file and keeps language unset', () => {
@@ -77,5 +83,16 @@ describe('normalizeProjectPatch', () => {
       }),
     ).toEqual({})
     expect(normalizeProjectPatch(null)).toEqual({})
+  })
+})
+
+describe('languages', () => {
+  it('records follow the project, then the app, then English', () => {
+    const ko = normalizeSettings({ language: 'ko' })
+    const unset = normalizeSettings({ language: null })
+    expect(uiLanguage(unset)).toBe('en')
+    expect(recordLanguageOf({ recordLanguage: null }, ko)).toBe('ko')
+    expect(recordLanguageOf({ recordLanguage: 'en' }, ko)).toBe('en')
+    expect(recordLanguageOf({ recordLanguage: null }, unset)).toBe('en')
   })
 })

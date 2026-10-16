@@ -2,13 +2,15 @@
 // turn contains, add risk-area cards, and record everything as candidates for a human (M2, M4).
 import { pendingDecisions } from '@shared/decisions'
 import { matchesAny } from '@shared/glob'
-import type { Language, Project, Settings, TrellisEvent } from '@shared/types'
+import { recordLanguageOf } from '@shared/settings'
+import type { EventOf, Language, Project, Settings, TrellisEvent } from '@shared/types'
 import { newId } from '../../lib/ids'
 import { KeyedSerialQueue } from '../../lib/serial'
 import type { AgentAdapter } from '../agents'
-import type { ChangesService, Git, TurnChanges } from '../changes'
+import type { Git } from '../../lib/git'
+import type { ChangesService, TurnChanges } from '../changes'
 import { listDecisionDocs } from '../decisions'
-import type { EventStore } from '../events'
+import { trellisEvent, type EventStore } from '../events'
 import { listSpecs } from '../specs'
 import { runHeadless } from './headless'
 import { ANALYSIS_SCHEMA, buildTurnPrompt, riskAreaCandidates, toCandidates } from './turn-prompt'
@@ -42,7 +44,7 @@ export class TurnAnalyzer {
   }
 
   private lang(project: Project): Language {
-    return project.recordLanguage ?? this.deps.settings().language ?? 'en'
+    return recordLanguageOf(project, this.deps.settings())
   }
 
   private async run(project: Project, turn: TurnRef, changes: TurnChanges): Promise<void> {
@@ -152,19 +154,9 @@ export class TurnAnalyzer {
     project: Project,
     turn: TurnRef,
     kind: K,
-    data: Extract<TrellisEvent, { kind: K }>['data'],
+    data: EventOf<K>['data'],
   ): Promise<void> {
-    return this.deps.events.append({
-      id: newId(),
-      ts: Date.now(),
-      projectId: project.id,
-      agent: 'trellis',
-      sessionId: turn.sessionId,
-      promptId: turn.promptId,
-      terminalId: turn.terminalId,
-      kind,
-      data,
-    } as TrellisEvent)
+    return this.deps.events.append(trellisEvent(project.id, kind, data, turn))
   }
 }
 

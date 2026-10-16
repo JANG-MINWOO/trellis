@@ -4,7 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Project } from '@shared/types'
-import { ChangesService, Git } from '../changes'
+import { Git } from '../../lib/git'
+import { ChangesService } from '../changes'
 import { RulesService } from './rules-service'
 
 function setup() {

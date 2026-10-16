@@ -25,7 +25,7 @@ const cspPlugin = {
     ),
 }
 
-/** "0.1.0+b5f7716" (or "+b5f7716-dirty") so the running build is always identifiable. */
+/** "0.2.0+14ecc50" (or "+14ecc50-dirty") so the running build is always identifiable. */
 function buildStamp(): string {
   const version = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'))
     .version as string

@@ -1,6 +1,12 @@
 // Decision candidates and records (M2). Pending = candidates without a resolution, computed from
 // the ledger. Records are short markdown files the human approved (ADR-0023).
-import type { DecisionCandidate, DecisionResolution, Language, TrellisEvent } from './types'
+import type {
+  DecisionCandidate,
+  DecisionResolution,
+  EventOf,
+  Language,
+  TrellisEvent,
+} from './types'
 
 export interface PendingDecision extends DecisionCandidate {
   ts: number
@@ -17,6 +23,21 @@ export function pendingDecisions(events: readonly TrellisEvent[]): PendingDecisi
     out.push({ ...e.data, ts: e.ts, promptId: e.promptId, terminalId: e.terminalId })
   }
   return out.sort((a, b) => b.ts - a.ts)
+}
+
+/** The candidate event with this id, unless the human has answered it already. */
+export function openCandidate<K extends 'decision.candidate' | 'behavior.candidate'>(
+  events: readonly TrellisEvent[],
+  kind: K,
+  candidateId: string,
+): EventOf<K> | null {
+  const resolvedKind = kind === 'decision.candidate' ? 'decision.resolved' : 'behavior.resolved'
+  let found: EventOf<K> | null = null
+  for (const e of events) {
+    if (e.kind === resolvedKind && e.data.candidateId === candidateId) return null
+    if (e.kind === kind && e.data.candidateId === candidateId) found ??= e as EventOf<K>
+  }
+  return found
 }
 
 /** "use-bcrypt-for-passwords"; keeps Korean letters so names stay readable. */

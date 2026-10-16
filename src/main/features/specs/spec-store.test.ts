@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { Git } from '../changes'
+import { Git } from '../../lib/git'
 import { applyBehavior, listSpecs } from './spec-store'
 
 function repo(): string {

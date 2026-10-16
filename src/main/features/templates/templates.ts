@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { Language, Project, TemplatePlan } from '@shared/types'
 import { resolveInsideProject } from '../../platform/paths'
+import { RULES_FILE } from '../rules'
 import {
   agentsMd,
   claudeMd,
@@ -30,7 +31,7 @@ export async function planTemplates(project: Project, lang: Language): Promise<T
   const dirs = { decisions: dir(project.decisionsDir), specs: dir(project.specsDir) }
   const hasInstructions = rootFiles.has('AGENTS.md') || rootFiles.has('CLAUDE.md')
   const candidates: { path: string; content: string; exists?: boolean }[] = [
-    { path: '.trellis/rules.json', content: rulesJson(stack) },
+    { path: RULES_FILE, content: rulesJson(stack) },
     // One instruction source: if either file exists, both are left alone.
     {
       path: 'AGENTS.md',

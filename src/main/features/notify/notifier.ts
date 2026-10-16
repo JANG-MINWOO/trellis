@@ -1,5 +1,6 @@
 import { type BrowserWindow, Notification } from 'electron'
 import { translate } from '@shared/i18n'
+import { uiLanguage } from '@shared/settings'
 import type { Settings, TrellisEvent } from '@shared/types'
 
 /** OS notification when Claude finishes or needs the user while Trellis is in the background. */
@@ -11,7 +12,7 @@ export function notifyForEvent(
 ): void {
   if (!settings.notifications.enabled || !Notification.isSupported()) return
   if (window && !window.isDestroyed() && window.isFocused()) return
-  const lang = settings.language ?? 'en'
+  const lang = uiLanguage(settings)
   let body: string | null = null
   if (event.kind === 'turn.stop') body = translate(lang, 'notify.turnDone')
   else if (event.kind === 'notification' && event.data.needsInput === true)

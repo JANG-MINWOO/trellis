@@ -1,23 +1,16 @@
 // Computes what changed, from git — never from hook events, so edits made through Bash count too.
-// Snapshots use a temporary index + `git write-tree`: the working tree, the real index and refs are
-// untouched; only unreferenced objects land in .git/objects and git gc cleans them (ADR-0014).
-import { randomUUID } from 'node:crypto'
-import { existsSync, promises as fs } from 'node:fs'
-import os from 'node:os'
+// Snapshots only add unreferenced objects to .git/objects, which git gc cleans (ADR-0014).
 import path from 'node:path'
 import { groupByArea } from '@shared/areas'
 import type { Baseline, ChangeEntry, ChangeReport } from '@shared/types'
 import { readJson, writeJsonAtomic } from '../../lib/json-file'
 import { KeyedSerialQueue } from '../../lib/serial'
-import { EMPTY_TREE, Git } from './git'
+import { EMPTY_TREE, Git } from '../../lib/git'
 import { combineChanges } from './git-parse'
+import { repoInfo, snapshotTree, type RepoInfo } from './snapshot'
+import { turnPatch } from './turn-patch'
 
-const LARGE_UNTRACKED_BYTES = 20 * 1024 * 1024
-const MAX_EXCLUDES = 200
 const MAX_TURN_FILES = 200
-const MAX_FILE_PATCH = 6000
-const LOCKFILE =
-  /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|Cargo\.lock|go\.sum|composer\.lock|Gemfile\.lock)$/
 
 export interface TurnChanges {
   files: ChangeEntry[]
@@ -26,12 +19,6 @@ export interface TurnChanges {
   endTree: string
 }
 const TURN_START_TTL_MS = 24 * 60 * 60 * 1000
-
-export interface RepoInfo {
-  top: string
-  /** Project folder relative to the repository root, forward slashes; '' at the root. */
-  prefix: string
-}
 
 interface StoredBaseline {
   tree: string
@@ -56,12 +43,7 @@ export class ChangesService {
 
   async repoInfo(root: string): Promise<RepoInfo | null> {
     const git = await this.git()
-    if (!git) return null
-    const top = (await git.tryRun(root, ['rev-parse', '--show-toplevel']))?.trim()
-    if (!top) return null
-    const prefix =
-      (await git.tryRun(root, ['rev-parse', '--show-prefix']))?.trim().replace(/\/$/, '') ?? ''
-    return { top: path.resolve(top), prefix }
+    return git ? repoInfo(git, root) : null
   }
 
   private baselineFile(projectId: string): string {
@@ -184,52 +166,17 @@ export class ChangesService {
     return this.turnStarts.get(`${projectId}:${promptId}`)?.tree ?? null
   }
 
-  /** Same as turnChanges(…, finish = true); kept for callers that only need the result. */
-  endTurn(projectId: string, root: string, promptId: string): Promise<TurnChanges | null> {
-    return this.turnChanges(projectId, root, promptId, true)
-  }
-
-  /**
-   * Unified diff between two trees for analysis, risk-area files first, lockfiles and binaries
-   * left out, each file and the whole capped so a huge turn still fits a prompt.
-   */
+  /** The turn's diff as text for analysis (see turn-patch.ts). */
   async turnPatch(
     root: string,
     startTree: string,
     endTree: string,
     files: readonly ChangeEntry[],
     firstPaths: ReadonlySet<string>,
-    maxChars = 40_000,
   ): Promise<string> {
     const git = await this.git()
     const info = await this.repoInfo(root)
-    if (!git || !info) return ''
-    const prefix = info.prefix ? `${info.prefix}/` : ''
-    const ordered = [...files]
-      .filter((f) => !f.binary && !LOCKFILE.test(f.path))
-      .sort((a, b) => Number(firstPaths.has(b.path)) - Number(firstPaths.has(a.path)))
-    let out = ''
-    for (const f of ordered) {
-      if (out.length >= maxChars) {
-        out += `\n… (more files not shown)\n`
-        break
-      }
-      const diff =
-        (await git.tryRun(info.top, [
-          'diff-tree',
-          '-p',
-          '--no-color',
-          '-M',
-          startTree,
-          endTree,
-          '--',
-          prefix + f.path,
-        ])) ?? ''
-      const body =
-        diff.length > MAX_FILE_PATCH ? `${diff.slice(0, MAX_FILE_PATCH)}\n… (truncated)\n` : diff
-      out += body
-    }
-    return out.slice(0, maxChars + 200)
+    return git && info ? turnPatch(git, info, startTree, endTree, files, firstPaths) : ''
   }
 
   private async diffTrees(info: RepoInfo, base: string, current: string): Promise<ChangeEntry[]> {
@@ -263,7 +210,6 @@ export class ChangesService {
     }
   }
 
-  /** Tree object of the working tree as it is right now (tracked + untracked, honoring .gitignore). */
   /** Tree of the working copy right now (tracked and untracked, not ignored), for rule checks. */
   snapshotNow(projectId: string, root: string): Promise<{ info: RepoInfo; tree: string } | null> {
     return this.queue.run(projectId, async () => {
@@ -273,62 +219,6 @@ export class ChangesService {
   }
 
   private async snapshotTree(info: RepoInfo): Promise<string> {
-    const git = (await this.git())!
-    const realIndex = path.resolve(
-      info.top,
-      (await git.run(info.top, ['rev-parse', '--git-path', 'index'])).trim(),
-    )
-    const tmpIndex = path.join(os.tmpdir(), `trellis-index-${randomUUID()}`)
-    try {
-      // Seeding from the real index keeps git's stat cache, so unchanged files are not re-hashed.
-      if (existsSync(realIndex)) {
-        await fs.copyFile(realIndex, tmpIndex)
-        // Keep the index's own mtime (rounded down to the second). git re-checks entries written
-        // in the same second as the index ("racy git"); a fresh copy time would switch that off
-        // and miss same-size edits made right after a commit.
-        const { atime, mtime } = await fs.stat(realIndex)
-        await fs.utimes(tmpIndex, atime, Math.floor(mtime.getTime() / 1000))
-      }
-      const env = { GIT_INDEX_FILE: tmpIndex }
-      const scope = info.prefix || '.'
-      const excludes = await this.largeUntracked(info, scope)
-      await git.run(
-        info.top,
-        ['add', '-A', '--', scope, ...excludes.map((p) => `:(exclude,literal)${p}`)],
-        {
-          env,
-          timeoutMs: 120_000,
-        },
-      )
-      return (await git.run(info.top, ['write-tree'], { env })).trim()
-    } finally {
-      await fs.rm(tmpIndex, { force: true })
-      await fs.rm(`${tmpIndex}.lock`, { force: true })
-    }
-  }
-
-  /** Huge untracked files (datasets, build output that is not ignored) would bloat .git/objects. */
-  private async largeUntracked(info: RepoInfo, scope: string): Promise<string[]> {
-    const git = (await this.git())!
-    const out = await git.tryRun(info.top, [
-      'ls-files',
-      '-z',
-      '--others',
-      '--exclude-standard',
-      '--',
-      scope,
-    ])
-    if (!out) return []
-    const large: string[] = []
-    for (const rel of out.split('\0')) {
-      if (!rel || large.length >= MAX_EXCLUDES) continue
-      try {
-        const stat = await fs.stat(path.join(info.top, rel))
-        if (stat.size > LARGE_UNTRACKED_BYTES) large.push(rel)
-      } catch {
-        // vanished between listing and stat
-      }
-    }
-    return large
+    return snapshotTree((await this.git())!, info)
   }
 }

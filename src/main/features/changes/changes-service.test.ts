@@ -6,7 +6,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ChangeReport } from '@shared/types'
 import { ChangesService } from './changes-service'
-import { Git } from './git'
+import { Git } from '../../lib/git'
 
 const git = new Git('git', () => process.env)
 const dirs: string[] = []
@@ -114,12 +114,12 @@ describe('ChangesService', () => {
     execFileSync('git', ['add', '-A'], { cwd: root })
     execFileSync('git', ['commit', '-q', '-m', 'claude committed mid-turn'], { cwd: root })
     writeFileSync(path.join(root, 'notes.md'), 'appended by a shell command\n')
-    const turn = await service.endTurn('p', root, 'prompt-1')
+    const turn = await service.turnChanges('p', root, 'prompt-1', true)
     expect(turn?.files.map((f) => `${f.status} ${f.path}`).sort()).toEqual([
       'A notes.md',
       'M app/src/a.ts',
     ])
-    expect(await service.endTurn('p', root, 'prompt-1')).toBeNull()
+    expect(await service.turnChanges('p', root, 'prompt-1', true)).toBeNull()
   })
 
   it('says so when the folder is not a repository', async () => {

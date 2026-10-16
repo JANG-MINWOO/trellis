@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { FileNode } from '@shared/types'
 import { resolveInsideProject } from '../../platform/paths'
-import type { Git } from '../changes'
+import type { Git } from '../../lib/git'
 
 const HIDDEN = new Set(['.git', '.DS_Store', 'Thumbs.db'])
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })

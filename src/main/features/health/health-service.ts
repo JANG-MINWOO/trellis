@@ -1,7 +1,6 @@
 // The Health panel (M1 metrics + M3 rules and trend + M4 document drift) for one project.
 import type { EventOf, HealthReport, Project } from '@shared/types'
-import { newId } from '../../lib/ids'
-import type { EventStore } from '../events'
+import { trellisEvent, type EventStore } from '../events'
 import type { RulesService } from '../rules'
 import { comparisonBase, computeTrend, shouldRecord, toSnapshot } from './health-trend'
 
@@ -29,17 +28,7 @@ export class HealthService {
     const snapshots = await this.snapshotsOf(project.id)
     const trend = computeTrend(snapshot, comparisonBase(snapshots, now))
     if (shouldRecord(snapshots, now)) {
-      const event: EventOf<'health.snapshot'> = {
-        id: newId(),
-        ts: now,
-        projectId: project.id,
-        agent: 'trellis',
-        sessionId: null,
-        promptId: null,
-        terminalId: null,
-        kind: 'health.snapshot',
-        data: snapshot,
-      }
+      const event = trellisEvent(project.id, 'health.snapshot', snapshot, undefined, now)
       await this.events.append(event)
       snapshots.push(event)
     }

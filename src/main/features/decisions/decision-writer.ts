@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { nextRecordName, renderDecisionRecord } from '@shared/decisions'
+import { joinRel } from '@shared/rel-path'
 import type { DecisionCandidate, DecisionResolution, Language } from '@shared/types'
 import { resolveInsideProject } from '../../platform/paths'
 
@@ -32,7 +33,7 @@ export async function writeDecisionRecord(
           flag: 'wx',
         },
       )
-      return `${dir.replace(/\/$/, '')}/${file}`
+      return joinRel(dir, file)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
       names.push(file)

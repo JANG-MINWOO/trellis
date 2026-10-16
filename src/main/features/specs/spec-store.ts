@@ -2,10 +2,11 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { slugify } from '@shared/decisions'
+import { dirPrefix, joinRel } from '@shared/rel-path'
 import { applyToSpec, parseSpec, SPEC_ID } from '@shared/specs'
 import type { BehaviorCandidate, Language, SpecArea, SpecList } from '@shared/types'
 import { resolveInsideProject } from '../../platform/paths'
-import type { Git } from '../changes'
+import type { Git } from '../../lib/git'
 
 const INDEX_FILES = new Set(['readme.md', 'index.md'])
 const TEST_PATH =
@@ -33,7 +34,7 @@ async function readAreas(
     if (!name.toLowerCase().endsWith('.md') || INDEX_FILES.has(name.toLowerCase())) continue
     try {
       const text = await fs.readFile(path.join(abs, name), 'utf8')
-      const rel = `${dir.replace(/\/$/, '')}/${name}`
+      const rel = joinRel(dir, name)
       texts.set(rel, text)
       const parsed = parseSpec(text)
       areas.push({
@@ -64,7 +65,7 @@ async function testLinks(
     '--exclude-standard',
   ])
   if (!out) return {}
-  const specsPrefix = specsDir ? `${specsDir.replace(/\/$/, '')}/` : null
+  const specsPrefix = dirPrefix(specsDir)
   const files = out
     .split('\0')
     .filter((f) => f && TEST_PATH.test(f) && !NOT_CODE.test(f))
@@ -123,8 +124,8 @@ export async function applyBehavior(
   if (!rel) {
     const base = slugify(change.area, 'general')
     let name = `${base}.md`
-    for (let n = 2; texts.has(`${dir}/${name}`); n++) name = `${base}-${n}.md`
-    rel = `${dir.replace(/\/$/, '')}/${name}`
+    for (let n = 2; texts.has(joinRel(dir, name)); n++) name = `${base}-${n}.md`
+    rel = joinRel(dir, name)
   }
   const edit = applyToSpec(texts.get(rel) ?? null, change, allIds, lang)
   await fs.mkdir(absDir, { recursive: true })

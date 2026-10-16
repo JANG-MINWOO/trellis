@@ -1,5 +1,7 @@
 import path from 'node:path'
-import { BrowserWindow, nativeTheme, screen, shell } from 'electron'
+import { BrowserWindow, dialog, nativeTheme, screen, shell } from 'electron'
+import { translate } from '@shared/i18n'
+import type { Language } from '@shared/types'
 import { readJson, writeJsonAtomic } from './lib/json-file'
 import { isMac } from './platform/os'
 
@@ -119,4 +121,17 @@ export function applyTitleBarTheme(win: BrowserWindow | null): void {
     height: TITLE_BAR_HEIGHT,
   })
   win.setBackgroundColor(colors.background)
+}
+
+/** Quitting ends running Claude sessions; ask first. Returns true when the user confirms. */
+export function confirmQuit(lang: Language, running: number): boolean {
+  const choice = dialog.showMessageBoxSync({
+    type: 'question',
+    buttons: [translate(lang, 'quit.confirm'), translate(lang, 'common.cancel')],
+    defaultId: 1,
+    cancelId: 1,
+    message: translate(lang, 'quit.title'),
+    detail: translate(lang, 'quit.detail', { count: running }),
+  })
+  return choice === 0
 }

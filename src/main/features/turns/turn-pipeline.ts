@@ -1,26 +1,18 @@
 // What happens around a turn: snapshot at the prompt, then at the end changes → (guard) →
 // analysis. The Stop hook can be answered with "block" so the agent fixes problems first (M3).
-import type { EventOf, Project, RulesCheck } from '@shared/types'
-import { newId } from '../../lib/ids'
+import type { EventOf, Project } from '@shared/types'
 import { logFailure } from '../../lib/log'
 import type { TurnAnalyzer } from '../analysis'
-import type { ChangesService, TurnChanges } from '../changes'
-import type { EventStore } from '../events'
-
-export interface GuardVerdict {
-  check: RulesCheck
-  /** Text sent back to the agent when the turn is blocked. */
-  reason: string | null
-}
+import type { ChangesService } from '../changes'
+import { trellisEvent, type EventStore } from '../events'
+import type { Guard } from '../rules'
 
 export interface TurnPipelineDeps {
   events: EventStore
   changes: ChangesService
   analyzer: TurnAnalyzer
   /** Structure rules and the project's check command (M3). */
-  guard:
-    | ((project: Project, changes: TurnChanges, mayBlock: boolean) => Promise<GuardVerdict | null>)
-    | null
+  guard: Guard | null
   /** Prepares the start-of-turn check while the agent works. */
   warm?: (project: Project, startTree: string) => void
   /** The end-of-turn check is running (the agent waits for it). */
@@ -110,16 +102,6 @@ export class TurnPipeline {
     kind: K,
     data: EventOf<K>['data'],
   ): Promise<void> {
-    return this.deps.events.append({
-      id: newId(),
-      ts: Date.now(),
-      projectId: project.id,
-      agent: 'trellis',
-      sessionId: stop.sessionId,
-      promptId: stop.promptId,
-      terminalId: stop.terminalId,
-      kind,
-      data,
-    } as EventOf<K>)
+    return this.deps.events.append(trellisEvent(project.id, kind, data, stop))
   }
 }

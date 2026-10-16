@@ -1,3 +1,3 @@
-export { RULES_FILE, BASELINE_FILE } from './config'
+export { RULES_FILE } from './config'
+export { createGuard, type Guard, type GuardVerdict } from './guard'
 export { RulesService, type TreeResult, type TurnVerdict } from './rules-service'
-export { describeViolation } from './verdict'
