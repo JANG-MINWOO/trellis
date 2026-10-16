@@ -1,4 +1,5 @@
 // What main pushes (settings, terminals, events, background work, file changes) → the store.
+import { EVENT_WINDOW } from '@shared/defaults'
 import { setLanguage } from '../i18n'
 import { api } from '../lib/api'
 import { pickTab, useStore } from './store'
@@ -29,7 +30,11 @@ export function subscribeToMain(): () => void {
     api.events.onEvent((event) => {
       set((s) => {
         const list = s.events[event.projectId]
-        return list ? { events: { ...s.events, [event.projectId]: [...list, event] } } : {}
+        if (!list) return {}
+        // Same window as a fresh load, so a long session does not grow without bound.
+        const next =
+          list.length >= EVENT_WINDOW ? [...list.slice(1 - EVENT_WINDOW), event] : [...list, event]
+        return { events: { ...s.events, [event.projectId]: next } }
       })
       if (TOUCHES_FILES.has(event.kind)) get().refreshChanges(event.projectId)
     }),

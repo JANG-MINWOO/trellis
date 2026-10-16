@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import path from 'node:path'
 import { openCandidate } from '@shared/decisions'
+import { EVENT_WINDOW } from '@shared/defaults'
 import type { EventOf, TrellisEvent } from '@shared/types'
 import { appendJsonl, readJsonlTail } from '../../lib/jsonl'
 import { KeyedSerialQueue } from '../../lib/serial'
@@ -22,7 +23,7 @@ export class EventStore extends EventEmitter<{ event: [TrellisEvent] }> {
     this.emit('event', event)
   }
 
-  list(projectId: string, limit = 2000): Promise<TrellisEvent[]> {
+  list(projectId: string, limit = EVENT_WINDOW): Promise<TrellisEvent[]> {
     return this.queue.run(projectId, () =>
       readJsonlTail<TrellisEvent>(this.fileFor(projectId), limit),
     )

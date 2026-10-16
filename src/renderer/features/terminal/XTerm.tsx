@@ -9,7 +9,7 @@ import { api } from '../../lib/api'
 import { clipboardHasOnlyImage, droppedPaths, hasFiles } from '../../lib/drop'
 import { useIsMac } from '../../state/derived'
 import { useStore } from '../../state/store'
-import { registerTerminal, unregisterTerminal } from './registry'
+import { onTerminalOutput, registerTerminal, unregisterTerminal } from './registry'
 import { DEFAULT_TERMINAL_FONT, terminalTheme } from './terminal-theme'
 
 interface Props {
@@ -96,8 +96,8 @@ export function XTerm({ terminalId, kind, visible, focusOnShow }: Props) {
 
     let live = false
     let disposed = false
-    const offData = api.terminal.onData((msg) => {
-      if (live && msg.terminalId === terminalId) term.write(msg.data)
+    const offData = onTerminalOutput(terminalId, (data) => {
+      if (live) term.write(data)
     })
     // Output pushed before the attach reply is already inside the returned buffer.
     void api.terminal.attach(terminalId).then((buffer) => {

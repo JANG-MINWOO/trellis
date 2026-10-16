@@ -17,6 +17,9 @@ export const DEFAULT_SETTINGS: Settings = {
   lastProjectId: null,
 }
 
+/** Most recent events per project the app keeps loaded (main reads this many, the UI keeps it). */
+export const EVENT_WINDOW = 2000
+
 export const DEFAULT_DECISIONS_DIR = 'docs/decisions'
 export const HEALTH_LINE_THRESHOLD = 300
 export const DEFAULT_SPECS_DIR = 'docs/specs'
