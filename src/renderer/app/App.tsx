@@ -5,6 +5,7 @@ import { OnboardingScreen } from '../features/onboarding'
 import { SettingsDialog } from '../features/settings'
 import { api } from '../lib/api'
 import { useStore } from '../state/store'
+import { subscribeToMain } from '../state/subscriptions'
 import { AppShell } from './AppShell'
 import { TitleBar } from './TitleBar'
 import { Toasts } from './Toasts'
@@ -74,7 +75,7 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    const unsubscribe = useStore.getState().subscribe()
+    const unsubscribe = subscribeToMain()
     void useStore.getState().boot()
     return unsubscribe
   }, [])

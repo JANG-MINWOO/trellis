@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Bot, FolderPlus, Keyboard, RotateCcw, Square, TriangleAlert, X } from 'lucide-react'
 import { Badge, Button, EmptyState, IconButton } from '../../components/ui'
 import { api } from '../../lib/api'
-import { pickTab, useActiveProject, useStore } from '../../state/store'
+import { pickTab, tabOrder, useActiveProject, useStore } from '../../state/store'
 import { Composer } from './Composer'
 import { LaunchPanel } from './LaunchPanel'
 import { TerminalTabs } from './TerminalTabs'
@@ -25,12 +25,7 @@ export function TerminalArea() {
 
   const all = useMemo(() => Object.values(terminals), [terminals])
   const tabs = useMemo(
-    () =>
-      project
-        ? all
-            .filter((x) => x.projectId === project.id)
-            .sort((a, b) => (a.kind === b.kind ? a.index - b.index : a.kind === 'claude' ? -1 : 1))
-        : [],
+    () => (project ? all.filter((x) => x.projectId === project.id).sort(tabOrder) : []),
     [all, project],
   )
   const activeId = project
