@@ -19,7 +19,12 @@ if (process.platform !== 'darwin') {
   process.exit(1)
 }
 
-const running = () => spawnSync('pgrep', ['-xq', 'Trellis']).status === 0
+// ps rather than pgrep: pgrep finds nothing in some sandboxed shells (e.g. Claude's Bash tool),
+// which once made this script replace the app under a running Trellis.
+const running = () =>
+  (spawnSync('ps', ['-axo', 'comm='], { encoding: 'utf8' }).stdout ?? '')
+    .split('\n')
+    .some((line) => line.trim().endsWith('/Trellis.app/Contents/MacOS/Trellis'))
 
 function swap(src, outDir) {
   // Copy next to the old app first: if the copy fails, the installed app is still there.
