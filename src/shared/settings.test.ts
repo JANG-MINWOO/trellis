@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from './defaults'
-import { applySettingsPatch, normalizeSettings } from './settings'
+import { applySettingsPatch, normalizeProjectPatch, normalizeSettings } from './settings'
 
 describe('normalizeSettings', () => {
   it('fills defaults for an empty file and keeps language unset', () => {
@@ -43,5 +43,39 @@ describe('applySettingsPatch', () => {
     expect(next.claude.extraArgs).toBe('--model opus')
     expect(next.claude.defaultMode).toBe('continue')
     expect(next.language).toBe('ko')
+  })
+})
+
+describe('normalizeProjectPatch', () => {
+  it('keeps known fields with the right types', () => {
+    expect(
+      normalizeProjectPatch({
+        name: 'web',
+        recordLanguage: 'ko',
+        analysisEnabled: false,
+        riskAreas: ['src/auth/**', 3],
+        guard: { checkCommand: 'npm run check' },
+      }),
+    ).toEqual({
+      name: 'web',
+      recordLanguage: 'ko',
+      analysisEnabled: false,
+      riskAreas: ['src/auth/**'],
+      guard: { checkCommand: 'npm run check' },
+    })
+    expect(normalizeProjectPatch({ recordLanguage: null })).toEqual({ recordLanguage: null })
+  })
+
+  it('drops unknown fields and wrong types', () => {
+    expect(
+      normalizeProjectPatch({
+        id: 'other',
+        path: '/etc',
+        recordLanguage: 'fr',
+        analysisEnabled: 'yes',
+        guard: { checkCommand: ['rm', '-rf'], enforceRules: 1 },
+      }),
+    ).toEqual({})
+    expect(normalizeProjectPatch(null)).toEqual({})
   })
 })

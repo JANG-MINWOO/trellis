@@ -91,6 +91,7 @@ export class Git {
         if (code === 0 || code === 1) resolve(stdout)
         else reject(new Error(stderr.trim() || `git exited with ${code}`))
       })
+      child.stdin.on('error', () => undefined)
       child.stdin.end(options.input)
     })
   }

@@ -59,3 +59,4 @@
 | [0028](0028-health-snapshots-and-doc-drift.md) | 건강 추세는 하루 한 번 스냅샷, 문서 어긋남은 "살아 있는 문서"만 본다 | 채택 |
 | [0029](0029-starter-templates.md) | 시작 템플릿은 없는 파일만 만들고, 지침 원본은 하나로 둔다 | 채택 |
 | [0030](0030-public-repo-mit.md) | 저장소를 MIT 라이선스로 공개한다 | 채택 |
+| [0031](0031-main-process-error-log.md) | 메인 프로세스 오류는 데이터 폴더의 로그 파일에 남긴다 | 채택 |

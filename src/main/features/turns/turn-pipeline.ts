@@ -2,6 +2,7 @@
 // analysis. The Stop hook can be answered with "block" so the agent fixes problems first (M3).
 import type { EventOf, Project, RulesCheck } from '@shared/types'
 import { newId } from '../../lib/ids'
+import { logFailure } from '../../lib/log'
 import type { TurnAnalyzer } from '../analysis'
 import type { ChangesService, TurnChanges } from '../changes'
 import type { EventStore } from '../events'
@@ -34,7 +35,9 @@ export class TurnPipeline {
 
   /** Called before the prompt hook is answered, so the snapshot predates the agent's work. */
   async onPrompt(project: Project, promptId: string): Promise<void> {
-    await this.deps.changes.beginTurn(project.id, project.path, promptId).catch(() => undefined)
+    await this.deps.changes
+      .beginTurn(project.id, project.path, promptId)
+      .catch(logFailure('turns', 'turn start snapshot failed'))
     const tree = this.deps.changes.turnStartTree(project.id, promptId)
     if (tree && project.guard.enforceRules) this.deps.warm?.(project, tree)
   }
@@ -64,7 +67,7 @@ export class TurnPipeline {
         }
       }
     }
-    void this.finish(project, stop).catch(() => undefined)
+    void this.finish(project, stop).catch(logFailure('turns', 'finishing the turn failed'))
     return undefined
   }
 
@@ -83,7 +86,9 @@ export class TurnPipeline {
     if (changes.files.length === 0) return
     const wasSentBack = this.sentBack.delete(`${project.id}:${stop.promptId}`)
     if (this.deps.guard) {
-      const verdict = await this.deps.guard(project, changes, false).catch(() => null)
+      const verdict = await this.deps
+        .guard(project, changes, false)
+        .catch(logFailure('turns', 'end-of-turn check failed'))
       if (
         verdict &&
         (verdict.check.newViolations.length > 0 || verdict.check.check || wasSentBack)

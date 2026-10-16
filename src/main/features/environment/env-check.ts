@@ -1,4 +1,4 @@
-import type { EnvironmentStatus, Settings, ToolStatus } from '@shared/types'
+import type { EnvironmentStatus, ToolStatus } from '@shared/types'
 import { execFileText } from '../../lib/exec'
 import { currentPlatform } from '../../platform/os'
 import { findExecutable, needsCmdWrapper } from '../../platform/which'
@@ -16,12 +16,13 @@ async function probe(file: string | null, env: NodeJS.ProcessEnv): Promise<ToolS
   }
 }
 
+/** `agent` is the executable a Claude tab would start, so onboarding and launch never disagree. */
 export async function checkEnvironment(
-  settings: Settings,
+  agent: string | null,
   env: NodeJS.ProcessEnv,
   shellEnvResolved: boolean,
 ): Promise<EnvironmentStatus> {
-  const claudePath = settings.claude.path.trim() || findExecutable('claude', env)
+  const claudePath = agent
   const gitPath = findExecutable('git', env)
   const [claude, git] = await Promise.all([probe(claudePath, env), probe(gitPath, env)])
   return { platform: currentPlatform(), claude, git, shellEnvResolved }

@@ -4,6 +4,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { Language, Project, RulesReport, Violation } from '@shared/types'
 import { writeJsonAtomic } from '../../lib/json-file'
+import { logFailure } from '../../lib/log'
 import { resolveInsideProject } from '../../platform/paths'
 import type { ChangesService, Git, RepoInfo, TurnChanges } from '../changes'
 import { runCheckCommand } from './check-command'
@@ -166,7 +167,7 @@ export class RulesService {
     void this.changes
       .repoInfo(project.path)
       .then((info) => (info ? this.analyzeTree(project, info, tree) : null))
-      .catch(() => undefined)
+      .catch(logFailure('rules', 'warming the start-of-turn check failed'))
   }
 
   /** Accepts every current violation as known debt; only new ones count from now on. */

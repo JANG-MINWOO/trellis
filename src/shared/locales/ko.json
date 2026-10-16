@@ -48,6 +48,10 @@
     "detail": "지금 종료하면 실행 중인 Claude 세션 {{count}}개가 함께 종료돼요. 대화 내용은 Claude Code에 남아 있어서 나중에 이어서 할 수 있어요.",
     "confirm": "종료"
   },
+  "startup": {
+    "failedTitle": "Trellis를 시작하지 못했어요",
+    "failedDetail": "{{message}}\n\n자세한 내용은 로그 파일에 있어요: {{log}}"
+  },
   "notify": {
     "turnDone": "Claude가 작업을 마쳤어요.",
     "needsInput": "Claude가 확인을 기다리고 있어요."

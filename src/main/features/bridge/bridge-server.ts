@@ -6,6 +6,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { logFailure } from '../../lib/log'
 
 const MAX_BODY = 8 * 1024 * 1024
 
@@ -98,7 +99,7 @@ export class BridgeServer {
       const terminalId = String(req.headers['x-trellis-terminal'] ?? '') || null
       const isStop = (raw as { hook_event_name?: unknown } | null)?.hook_event_name === 'Stop'
       const work = this.handler({ raw, projectId, terminalId, receivedAt: Date.now() }).catch(
-        () => undefined,
+        logFailure('bridge', 'handling a hook event failed'),
       )
       let timer: NodeJS.Timeout | undefined
       const timeout = new Promise<undefined>((resolve) => {

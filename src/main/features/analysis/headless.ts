@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import os from 'node:os'
 import { track } from '../../platform/children'
 import { getEnv } from '../../platform/env'
+import { killTree } from '../../platform/process'
 import { needsCmdWrapper } from '../../platform/which'
 
 export interface HeadlessResult {
@@ -29,7 +30,8 @@ export function runHeadless(
     const child = track(spawn(file, argv, { cwd: os.tmpdir(), env, windowsHide: true }))
     const timer = setTimeout(() => {
       timedOut = true
-      child.kill()
+      // The whole tree: on Windows the agent may run under a cmd.exe wrapper.
+      killTree(child)
     }, timeoutMs)
     child.stdout.setEncoding('utf8').on('data', (c: string) => (stdout += c))
     child.stderr.setEncoding('utf8').on('data', (c: string) => (stderr += c))
@@ -41,6 +43,9 @@ export function runHeadless(
       clearTimeout(timer)
       resolve({ code, stdout, stderr, timedOut })
     })
+    // An agent that exits before reading its prompt (e.g. not logged in) must not crash main;
+    // the exit code and stderr already tell what happened.
+    child.stdin.on('error', () => undefined)
     child.stdin.end(input)
   })
 }

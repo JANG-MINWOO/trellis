@@ -48,6 +48,10 @@
     "detail": "Quitting now ends {{count}} running Claude session(s). The conversation stays in Claude Code, so you can continue it later.",
     "confirm": "Quit"
   },
+  "startup": {
+    "failedTitle": "Trellis could not start",
+    "failedDetail": "{{message}}\n\nDetails are in the log file: {{log}}"
+  },
   "notify": {
     "turnDone": "Claude finished its turn.",
     "needsInput": "Claude is waiting for you."

@@ -1,11 +1,11 @@
 import { app, dialog, ipcMain, shell } from 'electron'
 import { Invoke, Send } from '@shared/ipc'
 import { translate } from '@shared/i18n'
+import { normalizeProjectPatch } from '@shared/settings'
 import type {
   Baseline,
   Language,
   Project,
-  ProjectPatch,
   SettingsPatch,
   TerminalStartRequest,
   TrellisEvent,
@@ -46,9 +46,10 @@ export function registerIpc(ctx: AppContext): void {
   handle(Invoke.settingsGet, () => ctx.settings.get())
   handle(Invoke.settingsUpdate, (patch) => ctx.settings.update((patch ?? {}) as SettingsPatch))
 
-  handle(Invoke.envCheck, async () =>
-    checkEnvironment(ctx.settings.get(), await ctx.env(), ctx.shellEnvResolved()),
-  )
+  handle(Invoke.envCheck, async () => {
+    const { executable, env } = await ctx.terminals.agentLaunch()
+    return checkEnvironment(executable, env, ctx.shellEnvResolved())
+  })
 
   handle(Invoke.projectsList, () => ctx.registry.list())
   handle(Invoke.projectsAddDialog, async () => {
@@ -75,7 +76,7 @@ export function registerIpc(ctx: AppContext): void {
     await ctx.registry.remove(p.id)
   })
   handle(Invoke.projectsUpdate, (id, patch) =>
-    ctx.registry.update(project(id).id, (patch ?? {}) as ProjectPatch),
+    ctx.registry.update(project(id).id, normalizeProjectPatch(patch)),
   )
   handle(Invoke.projectsOpened, async (id) => {
     const p = project(id)

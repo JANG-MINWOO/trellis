@@ -6,6 +6,7 @@ import type {
   Language,
   LaunchMode,
   PermissionMode,
+  ProjectPatch,
   Settings,
   SettingsPatch,
   ThemePreference,
@@ -96,4 +97,32 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
   }
   // The language stays null only until chosen; a fresh file has no "language" key at all.
   return normalizeSettings({ ...merged, language: merged.language ?? null })
+}
+
+/**
+ * Project settings arrive over IPC. Keep only known fields with the right types: the check command
+ * runs at the end of every turn, so nothing unexpected may slip into it.
+ */
+export function normalizeProjectPatch(raw: unknown): ProjectPatch {
+  const r = obj(raw)
+  const patch: ProjectPatch = {}
+  if (typeof r.name === 'string') patch.name = r.name.slice(0, 200)
+  if (r.recordLanguage === null || r.recordLanguage === 'ko' || r.recordLanguage === 'en')
+    patch.recordLanguage = r.recordLanguage
+  if (typeof r.decisionsDir === 'string') patch.decisionsDir = r.decisionsDir.slice(0, 500)
+  if (typeof r.specsDir === 'string') patch.specsDir = r.specsDir.slice(0, 500)
+  if (typeof r.analysisEnabled === 'boolean') patch.analysisEnabled = r.analysisEnabled
+  if (Array.isArray(r.riskAreas))
+    patch.riskAreas = r.riskAreas
+      .filter((g): g is string => typeof g === 'string')
+      .map((g) => g.slice(0, 500))
+      .slice(0, 200)
+  if (r.guard !== undefined) {
+    const g = obj(r.guard)
+    const guard: NonNullable<ProjectPatch['guard']> = {}
+    if (typeof g.enforceRules === 'boolean') guard.enforceRules = g.enforceRules
+    if (typeof g.checkCommand === 'string') guard.checkCommand = g.checkCommand.slice(0, 1000)
+    if (Object.keys(guard).length > 0) patch.guard = guard
+  }
+  return patch
 }

@@ -35,13 +35,25 @@ function visible(state: WindowState): boolean {
   )
 }
 
+const DEFAULT_STATE: WindowState = { width: 1440, height: 900, maximized: false }
+
+/** A hand-edited or old file must not produce NaN sizes. */
+function toWindowState(raw: unknown): WindowState {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const num = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) ? v : undefined
+  return {
+    x: num(r.x),
+    y: num(r.y),
+    width: num(r.width) ?? DEFAULT_STATE.width,
+    height: num(r.height) ?? DEFAULT_STATE.height,
+    maximized: r.maximized === true,
+  }
+}
+
 export async function createMainWindow(dataDir: string): Promise<BrowserWindow> {
   const stateFile = path.join(dataDir, 'window-state.json')
-  const saved = await readJson<WindowState>(stateFile, {
-    width: 1440,
-    height: 900,
-    maximized: false,
-  })
+  const saved = toWindowState(await readJson<unknown>(stateFile, null))
   const colors = themeColors()
   const isMac = process.platform === 'darwin'
 

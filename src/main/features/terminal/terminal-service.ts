@@ -13,6 +13,7 @@ import type {
   TerminalStartResult,
 } from '@shared/types'
 import { newId } from '../../lib/ids'
+import { logFailure } from '../../lib/log'
 import { KeyedSerialQueue } from '../../lib/serial'
 import { getEnv, sanitizeChildEnv, setEnv } from '../../platform/env'
 import { defaultShell } from '../../platform/shells'
@@ -57,6 +58,10 @@ export class TerminalService {
 
   constructor(private readonly deps: TerminalServiceDeps) {
     deps.ptys.on('exit', (info, output) => this.handleExit(info, output))
+    deps.ptys.on('removed', (terminalId) => {
+      this.sawEvents.delete(terminalId)
+      this.launches.delete(terminalId)
+    })
   }
 
   /** Called for every agent event so we can learn the session id behind a terminal. */
@@ -152,7 +157,9 @@ export class TerminalService {
     // Extra tabs keep the baseline of the run already in progress.
     if (!otherClaudeRunning) {
       await Promise.race([
-        this.deps.beforeClaudeLaunch(project.id, project.path).catch(() => undefined),
+        this.deps
+          .beforeClaudeLaunch(project.id, project.path)
+          .catch(logFailure('terminal', 'session baseline snapshot failed')),
         new Promise((resolve) => setTimeout(resolve, BEFORE_LAUNCH_TIMEOUT_MS)),
       ])
     }

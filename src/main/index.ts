@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { app, BrowserWindow, dialog, nativeTheme } from 'electron'
 import { Push } from '@shared/ipc'
-import { translate } from '@shared/i18n'
+import { detectLanguage, translate } from '@shared/i18n'
 import type { AppContext } from './context'
 import { claudeCodeAdapter } from './features/agents'
 import { TurnAnalyzer } from './features/analysis'
@@ -22,20 +22,39 @@ import { resolveShellEnv } from './platform/shell-env'
 import { stopAllChildren } from './platform/children'
 import { configureUserData } from './platform/user-data'
 import { newId } from './lib/ids'
+import { initLog, log, logFailure } from './lib/log'
 import { findExecutable } from './platform/which'
 import { applyTitleBarTheme, createMainWindow } from './window'
 
 app.setName('Trellis')
 configureUserData(app)
+process.on('unhandledRejection', (reason) => log.error('main', 'unhandled rejection', reason))
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  void app.whenReady().then(bootstrap)
+  app
+    .whenReady()
+    .then(bootstrap)
+    .catch((error: unknown) => {
+      // Without this the process would keep the single-instance lock with no window, and every
+      // later launch would quietly hand over to it.
+      log.error('startup', 'bootstrap failed', error)
+      const lang = detectLanguage(app.getLocale())
+      dialog.showErrorBox(
+        translate(lang, 'startup.failedTitle'),
+        translate(lang, 'startup.failedDetail', {
+          message: error instanceof Error ? error.message : String(error),
+          log: path.join(app.getPath('userData'), 'logs', 'main.log'),
+        }),
+      )
+      app.exit(1)
+    })
 }
 
 async function bootstrap(): Promise<void> {
   const dataDir = app.getPath('userData')
+  await initLog(path.join(dataDir, 'logs')).catch(() => undefined)
   const projectsDir = path.join(dataDir, 'projects')
   const shellEnv = resolveShellEnv()
   let shellEnvResolved = false
@@ -114,7 +133,7 @@ async function bootstrap(): Promise<void> {
           kind: 'session.start',
           data: { source: mode === 'continue' ? 'resume' : 'startup', model: null },
         })
-        .catch(() => undefined),
+        .catch(logFailure('terminal', 'recording the session start failed')),
   })
   terminals = terminalService
 

@@ -1,13 +1,14 @@
-// Promotes the current source to the "stable build" in /Applications (ADR-0011, ADR-0019).
+// Promotes the current source to the "stable build" in /Applications (ADR-0011, ADR-0021).
 //   npm run install:local          build, then replace /Applications/Trellis.app
 // If Trellis is running (e.g. this runs from Claude inside Trellis), the new app is built now and
 // a small background helper swaps it in as soon as you quit Trellis, then reopens it.
 // The app is built in a temporary folder outside the project, so no copy is left behind for
 // Spotlight or Launchpad to show as a second "Trellis".
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, renameSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const DEST = '/Applications/Trellis.app'
 
@@ -21,10 +22,17 @@ if (process.platform !== 'darwin') {
 const running = () => spawnSync('pgrep', ['-xq', 'Trellis']).status === 0
 
 function swap(src, outDir) {
-  rmSync(DEST, { recursive: true, force: true })
+  // Copy next to the old app first: if the copy fails, the installed app is still there.
+  const staged = `${DEST}.installing`
+  rmSync(staged, { recursive: true, force: true })
   // ditto keeps permissions, symlinks and extended attributes intact inside the bundle.
-  const copy = spawnSync('ditto', [src, DEST], { stdio: 'inherit' })
-  if (copy.status !== 0) process.exit(copy.status ?? 1)
+  const copy = spawnSync('ditto', [src, staged], { stdio: 'inherit' })
+  if (copy.status !== 0) {
+    rmSync(staged, { recursive: true, force: true })
+    process.exit(copy.status ?? 1)
+  }
+  rmSync(DEST, { recursive: true, force: true })
+  renameSync(staged, DEST)
   rmSync(outDir, { recursive: true, force: true })
 }
 
@@ -57,7 +65,7 @@ if (process.argv[2] === '--swap-when-quit') {
     process.exit(1)
   }
   if (running()) {
-    spawn(process.execPath, [new URL(import.meta.url).pathname, '--swap-when-quit', src, outDir], {
+    spawn(process.execPath, [fileURLToPath(import.meta.url), '--swap-when-quit', src, outDir], {
       detached: true,
       stdio: 'ignore',
     }).unref()
