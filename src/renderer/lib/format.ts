@@ -14,6 +14,10 @@ export function clockTime(ts: number): string {
   return new Date(ts).toLocaleTimeString(i18next.language, { hour: '2-digit', minute: '2-digit' })
 }
 
+export function dateTime(ts: number): string {
+  return new Date(ts).toLocaleString(i18next.language)
+}
+
 export function duration(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000))
   if (s < 60) return `${s}s`

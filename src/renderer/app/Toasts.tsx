@@ -1,8 +1,10 @@
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 import { useStore } from '../state/store'
 
 export function Toasts() {
+  const { t } = useTranslation()
   const toasts = useStore((s) => s.toasts)
   const dismiss = useStore((s) => s.dismissToast)
   return (
@@ -26,6 +28,7 @@ export function Toasts() {
           <button
             type="button"
             onClick={() => dismiss(toast.id)}
+            aria-label={t('common.close')}
             className="shrink-0 text-fg-faint hover:text-fg"
           >
             <X size={13} />

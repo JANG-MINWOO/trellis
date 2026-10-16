@@ -29,14 +29,18 @@ export function useTimeline(projectId: string | null): TimelineItem[] {
 
 export type ClaudeState = AgentState | 'off'
 
+/** The Claude tab the user is looking at; otherwise the first one in tab order. */
 export function useClaudeTerminal(projectId: string | null): TerminalInfo | null {
   const terminals = useStore((s) => s.terminals)
-  return useMemo(
-    () =>
-      Object.values(terminals).find((t) => t.projectId === projectId && t.kind === 'claude') ??
-      null,
-    [terminals, projectId],
-  )
+  const activeTab = useStore((s) => (projectId ? s.activeTab[projectId] : undefined))
+  return useMemo(() => {
+    const active = activeTab ? terminals[activeTab] : undefined
+    if (active?.kind === 'claude' && active.projectId === projectId) return active
+    const claude = Object.values(terminals)
+      .filter((t) => t.projectId === projectId && t.kind === 'claude')
+      .sort((a, b) => a.index - b.index)
+    return claude[0] ?? null
+  }, [terminals, activeTab, projectId])
 }
 
 export function useClaudeState(projectId: string | null): ClaudeState {

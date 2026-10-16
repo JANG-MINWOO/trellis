@@ -74,15 +74,15 @@ function ProjectFileTree() {
   }, [report])
 
   const toggle = (dir: string): void => {
+    // Updaters may run twice (StrictMode), so the fetch stays outside.
+    const opening = !expanded.has(dir)
     setExpanded((prev) => {
       const next = new Set(prev)
-      if (next.has(dir)) next.delete(dir)
-      else {
-        next.add(dir)
-        if (!children[dir]) void load(dir)
-      }
+      if (opening) next.add(dir)
+      else next.delete(dir)
       return next
     })
+    if (opening && !children[dir]) void load(dir)
   }
 
   const open = async (path: string): Promise<void> => {

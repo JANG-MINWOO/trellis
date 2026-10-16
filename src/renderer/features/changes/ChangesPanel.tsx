@@ -6,7 +6,7 @@ import { Button, EmptyState, IconButton, Notice, Segmented, Spinner } from '../.
 import { api } from '../../lib/api'
 import { areaLabel } from '../../lib/area'
 import { cn } from '../../lib/cn'
-import { clockTime, formatNumber, relativeTime, splitPath } from '../../lib/format'
+import { clockTime, dateTime, formatNumber, relativeTime, splitPath } from '../../lib/format'
 import { useActiveProject, useStore } from '../../state/store'
 
 const STATUS_STYLE: Record<ChangeStatus, string> = {
@@ -127,7 +127,7 @@ export function ChangesPanel() {
           </span>
         )}
         {report.baseline === 'session' && report.baselineTakenAt && (
-          <span title={new Date(report.baselineTakenAt).toLocaleString()}>
+          <span title={dateTime(report.baselineTakenAt)}>
             ·{' '}
             {t('changes.baselineAt', {
               time: clockTime(report.baselineTakenAt),

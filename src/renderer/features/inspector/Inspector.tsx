@@ -76,7 +76,8 @@ export function Inspector() {
           {trigger('specs', t('specs.title'), pending?.behaviors, true)}
           {trigger('health', t('health.title'))}
         </Tabs.List>
-        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
+        {/* Keyed so panels never show the previous project's data while the new one loads. */}
+        <div key={project.id} className="scroll-thin min-h-0 flex-1 overflow-y-auto">
           <Tabs.Content value="timeline" className="outline-none">
             <TimelinePanel />
           </Tabs.Content>

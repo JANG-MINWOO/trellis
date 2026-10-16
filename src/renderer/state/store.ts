@@ -95,6 +95,8 @@ interface Actions {
 
 const DEFAULT_SIZE = { cols: 100, rows: 30 }
 const changeTimers = new Map<string, number>()
+/** Latest change request per project; an older reply that arrives late is dropped. */
+const changeSeq = new Map<string, number>()
 let toastSeq = 0
 
 export const useStore = create<State & Actions>()((set, get) => ({
@@ -129,13 +131,14 @@ export const useStore = create<State & Actions>()((set, get) => ({
       api.terminal.list(),
     ])
     setLanguage(settings.language ?? (appInfo.locale.toLowerCase().startsWith('ko') ? 'ko' : 'en'))
-    set({
+    // subscribe() runs first, so updates that arrived while booting are newer than this list.
+    set((s) => ({
       appInfo,
       settings,
       projects,
-      terminals: Object.fromEntries(terminals.map((t) => [t.id, t])),
+      terminals: { ...Object.fromEntries(terminals.map((t) => [t.id, t])), ...s.terminals },
       booted: true,
-    })
+    }))
     const last =
       settings.lastProjectId && projects.find((p) => p.id === settings.lastProjectId && !p.missing)
     if (last) await get().selectProject(last.id)
@@ -200,12 +203,16 @@ export const useStore = create<State & Actions>()((set, get) => ({
 
   async selectProject(id) {
     set({ activeProjectId: id })
+    // The user may pick another project while we wait; then this one must not go on (or start
+    // Claude in a project that is no longer on screen).
+    const stillActive = (): boolean => get().activeProjectId === id
     await api.projects.watch(id)
-    if (!id) return
+    if (!id || !stillActive()) return
     const project = get().projects.find((p) => p.id === id)
     if (!project || project.missing) return
     await api.projects.markOpened(id)
     await Promise.all([get().loadEvents(id), get().refreshProjects()])
+    if (!stillActive()) return
     get().refreshChanges(id, true)
     const settings = get().settings
     const hasClaude = Object.values(get().terminals).some(
@@ -227,10 +234,23 @@ export const useStore = create<State & Actions>()((set, get) => ({
   async removeProject(id) {
     await api.projects.remove(id)
     set((s) => {
+      const without = <T>(record: Record<string, T>): Record<string, T> => {
+        const next = { ...record }
+        delete next[id]
+        return next
+      }
       const terminals = Object.fromEntries(
         Object.entries(s.terminals).filter(([, t]) => t.projectId !== id),
       )
-      return { terminals, activeProjectId: s.activeProjectId === id ? null : s.activeProjectId }
+      return {
+        terminals,
+        events: without(s.events),
+        changes: without(s.changes),
+        changesLoading: without(s.changesLoading),
+        startErrors: without(s.startErrors),
+        activeTab: without(s.activeTab),
+        activeProjectId: s.activeProjectId === id ? null : s.activeProjectId,
+      }
     })
     await get().refreshProjects()
   },
@@ -281,8 +301,11 @@ export const useStore = create<State & Actions>()((set, get) => ({
   refreshChanges(projectId, immediate = false) {
     const run = async (): Promise<void> => {
       changeTimers.delete(projectId)
+      const seq = (changeSeq.get(projectId) ?? 0) + 1
+      changeSeq.set(projectId, seq)
       set((s) => ({ changesLoading: { ...s.changesLoading, [projectId]: true } }))
       const report = await api.changes.get(projectId, get().baseline)
+      if (changeSeq.get(projectId) !== seq) return
       set((s) => ({
         changes: { ...s.changes, [projectId]: report },
         changesLoading: { ...s.changesLoading, [projectId]: false },
