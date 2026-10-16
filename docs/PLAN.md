@@ -203,7 +203,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] 구조 정리: 세 번째 중복 옮기기, 300줄 넘는 파일 나누기, IPC의 업무 로직을 기능 폴더로, renderer store를 slice로 (ADR-0032)
 - [x] CI: intent·guard e2e도 돌리기
 - [x] 테스트: 단위·통합 120개, e2e는 smoke·intent·guard(가짜 claude, CI에서도) + 직접 켜는 real-claude·browse
-- [ ] 안정 빌드 교체(`install:local`), 설치된 빌드 표시가 HEAD와 맞는지 확인
+- [x] 안정 빌드 교체(`install:local`), 설치된 빌드 표시가 HEAD와 맞는지 확인
 - [ ] 버전 태그 `v0.2.0` — 태그를 달면 Releases에 dmg·exe가 공개되므로 미누 확인 후
 
 ### M5 — v1 마감
