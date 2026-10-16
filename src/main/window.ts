@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { BrowserWindow, nativeTheme, screen, shell } from 'electron'
 import { readJson, writeJsonAtomic } from './lib/json-file'
+import { isMac } from './platform/os'
 
 const COLORS = {
   dark: { background: '#0f1012', symbol: '#c9cbd1' },
@@ -55,7 +56,7 @@ export async function createMainWindow(dataDir: string): Promise<BrowserWindow> 
   const stateFile = path.join(dataDir, 'window-state.json')
   const saved = toWindowState(await readJson<unknown>(stateFile, null))
   const colors = themeColors()
-  const isMac = process.platform === 'darwin'
+  const mac = isMac()
 
   const win = new BrowserWindow({
     width: Math.max(saved.width, 960),
@@ -66,8 +67,8 @@ export async function createMainWindow(dataDir: string): Promise<BrowserWindow> 
     show: false,
     title: 'Trellis',
     backgroundColor: colors.background,
-    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
-    ...(isMac
+    titleBarStyle: mac ? 'hiddenInset' : 'hidden',
+    ...(mac
       ? { trafficLightPosition: { x: 14, y: 13 } }
       : {
           titleBarOverlay: {
@@ -110,7 +111,7 @@ export async function createMainWindow(dataDir: string): Promise<BrowserWindow> 
 }
 
 export function applyTitleBarTheme(win: BrowserWindow | null): void {
-  if (!win || win.isDestroyed() || process.platform === 'darwin') return
+  if (!win || win.isDestroyed() || isMac()) return
   const colors = themeColors()
   win.setTitleBarOverlay({
     color: colors.background,

@@ -47,3 +47,9 @@ export function sanitizeChildEnv(env: NodeJS.ProcessEnv): Record<string, string>
   }
   return out
 }
+
+/** Finder-launched apps often lack a UTF-8 locale; Korean text in the terminal breaks without one. */
+export function ensureUtf8Locale(env: NodeJS.ProcessEnv): void {
+  if (!isWindows() && !getEnv(env, 'LANG') && !getEnv(env, 'LC_ALL'))
+    setEnv(env, 'LANG', 'en_US.UTF-8')
+}

@@ -18,6 +18,11 @@ const HOOK_EVENTS = [
   'Notification',
 ] as const
 
+/** Seconds Claude waits for each hook. Stop may wait for the project's checks (guard). */
+export const STOP_HOOK_TIMEOUT_S = 120
+const SESSION_END_TIMEOUT_S = 1
+const DEFAULT_TIMEOUT_S = 5
+
 export function buildHookSettings(url: string): Record<string, unknown> {
   const hook = (timeout: number) => ({
     type: 'http',
@@ -32,8 +37,13 @@ export function buildHookSettings(url: string): Record<string, unknown> {
   })
   const hooks: Record<string, unknown[]> = {}
   for (const event of HOOK_EVENTS) {
-    // SessionEnd hooks share a 1.5s budget; Stop may wait for the project's checks (guard).
-    const timeout = event === 'SessionEnd' ? 1 : event === 'Stop' ? 120 : 5
+    // SessionEnd hooks share a 1.5s budget.
+    const timeout =
+      event === 'SessionEnd'
+        ? SESSION_END_TIMEOUT_S
+        : event === 'Stop'
+          ? STOP_HOOK_TIMEOUT_S
+          : DEFAULT_TIMEOUT_S
     const group: Record<string, unknown> = { hooks: [hook(timeout)] }
     if (event === 'PostToolUse' || event === 'PostToolUseFailure') group.matcher = '*'
     hooks[event] = [group]

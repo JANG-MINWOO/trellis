@@ -150,7 +150,11 @@ export type TrellisEvent =
   | (EventBase & { kind: 'turn.stop'; data: { lastMessage: string } })
   /** What git saw change between the prompt and the end of the turn (includes Bash edits). */
   | (EventBase & { kind: 'turn.changes'; data: { files: ChangeEntry[]; truncated: boolean } })
-  | (EventBase & { kind: 'notification'; data: { type: string; message: string } })
+  | (EventBase & {
+      kind: 'notification'
+      /** needsInput: the agent waits for the human (absent in events recorded before 0.2.0 fix). */
+      data: { type: string; message: string; needsInput?: boolean }
+    })
   | (EventBase & { kind: 'intent.set'; data: IntentData })
   | (EventBase & { kind: 'decision.candidate'; data: DecisionCandidate })
   | (EventBase & { kind: 'decision.resolved'; data: DecisionResolution })

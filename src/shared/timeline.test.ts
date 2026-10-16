@@ -84,7 +84,7 @@ describe('buildTimeline', () => {
         ts: 2,
         sessionId: 's',
         promptId: null,
-        data: { type: 'permission_prompt', message: 'ok?' },
+        data: { type: 'permission_prompt', message: 'ok?', needsInput: true },
       }),
     ]
     const waiting = buildTimeline(base)[0] as TurnItem

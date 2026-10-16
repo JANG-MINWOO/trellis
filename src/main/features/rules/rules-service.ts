@@ -136,7 +136,12 @@ export class RulesService {
   async turnVerdict(
     project: Project,
     changes: TurnChanges,
-    options: { runCheck: boolean; env: Record<string, string>; lang: Language },
+    options: {
+      runCheck: boolean
+      env: Record<string, string>
+      lang: Language
+      checkTimeoutMs?: number
+    },
   ): Promise<TurnVerdict | null> {
     const info = await this.changes.repoInfo(project.path)
     if (!info) return null
@@ -152,7 +157,10 @@ export class RulesService {
     const command = project.guard.checkCommand.trim()
     const check =
       options.runCheck && command
-        ? { command, ...(await runCheckCommand(command, project.path, options.env)) }
+        ? {
+            command,
+            ...(await runCheckCommand(command, project.path, options.env, options.checkTimeoutMs)),
+          }
         : null
     return {
       newViolations,

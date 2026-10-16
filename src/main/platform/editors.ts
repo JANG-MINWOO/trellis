@@ -5,7 +5,7 @@ import path from 'node:path'
 import type { EditorApp, Settings } from '@shared/types'
 import { getEnv } from './env'
 import { isMac, isWindows } from './os'
-import { findExecutable, needsCmdWrapper } from './which'
+import { findExecutable, spawnTarget } from './which'
 
 interface EditorDef {
   id: string
@@ -187,11 +187,7 @@ export function resolveEditorLaunch(
       return { kind: 'reveal' }
     case 'custom': {
       if (!editor.customPath) return { kind: 'missing' }
-      if (needsCmdWrapper(editor.customPath)) {
-        const cmd = getEnv(env, 'ComSpec') ?? 'cmd.exe'
-        return { kind: 'process', file: cmd, args: ['/d', '/c', editor.customPath, file] }
-      }
-      return { kind: 'process', file: editor.customPath, args: [file] }
+      return { kind: 'process', ...spawnTarget(editor.customPath, [file], env) }
     }
     case 'app': {
       const def = CATALOG.find((d) => d.id === editor.app)

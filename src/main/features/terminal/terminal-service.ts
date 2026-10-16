@@ -15,9 +15,9 @@ import type {
 import { newId } from '../../lib/ids'
 import { logFailure } from '../../lib/log'
 import { KeyedSerialQueue } from '../../lib/serial'
-import { getEnv, sanitizeChildEnv, setEnv } from '../../platform/env'
+import { ensureUtf8Locale, getEnv, sanitizeChildEnv, setEnv } from '../../platform/env'
 import { defaultShell } from '../../platform/shells'
-import { findExecutable, needsCmdWrapper } from '../../platform/which'
+import { findExecutable, spawnTarget } from '../../platform/which'
 import type { AgentAdapter } from '../agents'
 import type { ProjectRegistry } from '../projects'
 import { PtyManager, type SpawnPlan } from './pty-manager'
@@ -239,11 +239,8 @@ export class TerminalService {
     return findExecutable(this.deps.adapter.executableName, env)
   }
 
-  /** Windows .cmd shims (npm installs) cannot be spawned directly. */
   private wrap(plan: SpawnPlan): SpawnPlan {
-    if (!needsCmdWrapper(plan.file)) return plan
-    const cmd = getEnv(plan.env, 'ComSpec') ?? 'cmd.exe'
-    return { ...plan, file: cmd, args: ['/d', '/c', plan.file, ...plan.args] }
+    return { ...plan, ...spawnTarget(plan.file, plan.args, plan.env) }
   }
 
   private async childEnv(): Promise<Record<string, string>> {
@@ -251,9 +248,7 @@ export class TerminalService {
     this.deps.adapter.scrubInheritedEnv(env)
     setEnv(env, 'TERM', 'xterm-256color')
     setEnv(env, 'COLORTERM', 'truecolor')
-    // Finder-launched apps often lack a UTF-8 locale; Korean text would break without one.
-    if (process.platform !== 'win32' && !getEnv(env, 'LANG') && !getEnv(env, 'LC_ALL'))
-      setEnv(env, 'LANG', 'en_US.UTF-8')
+    ensureUtf8Locale(env)
     // Make sure the folder of the agent binary is on PATH for anything it spawns.
     const agent = this.resolveAgent(env)
     if (agent) {

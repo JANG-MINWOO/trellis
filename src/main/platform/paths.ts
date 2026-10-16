@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { isWindows } from './os'
 
 /** Absolute or root-relative path → forward-slash path relative to root, or null when outside. */
 export function toProjectRelative(root: string, target: string): string | null {
@@ -13,4 +14,9 @@ export function toProjectRelative(root: string, target: string): string | null {
 export function resolveInsideProject(root: string, rel: string): string | null {
   const abs = path.resolve(root, ...rel.split('/').filter(Boolean))
   return toProjectRelative(root, abs) === null ? null : abs
+}
+
+/** Key for "the same folder": Windows paths are case-insensitive. */
+export function pathKey(absolute: string): string {
+  return isWindows() ? absolute.toLowerCase() : absolute
 }

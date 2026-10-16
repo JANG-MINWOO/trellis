@@ -15,3 +15,6 @@
 
 ## 결과와 대가
 초기 구현에서 인터페이스를 먼저 그어야 한다. 단, 구현이 하나뿐인 추상화는 최소한으로 둔다(인터페이스와 Claude Code 구현 하나).
+
+## 덧붙임 (2026-10-16)
+점검해 보니 Claude Code 고유의 것이 어댑터 밖으로 새고 있었다(Stop 훅의 `stop_hook_active`와 `{decision: "block"}` 응답, 알림 종류 이름, 훅 대기 시간이 브리지·턴 처리·알림·타임라인에 흩어짐). 어댑터 인터페이스에 `replyTimeoutMs`·`stopReplyMs`·`isContinuedStop`·`blockStopReply`를 더하고, 알림 이벤트에 에이전트 무관한 `needsInput`을 넣어 옮겼다. 다시 새지 않게 대표적인 필드·플래그 이름은 어댑터 폴더 밖에서 ESLint가 막는다(AGENTS.md §7).

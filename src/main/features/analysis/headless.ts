@@ -1,9 +1,8 @@
 import { spawn } from 'node:child_process'
 import os from 'node:os'
 import { track } from '../../platform/children'
-import { getEnv } from '../../platform/env'
 import { killTree } from '../../platform/process'
-import { needsCmdWrapper } from '../../platform/which'
+import { spawnTarget } from '../../platform/which'
 
 export interface HeadlessResult {
   code: number | null
@@ -20,9 +19,7 @@ export function runHeadless(
   input: string,
   timeoutMs: number,
 ): Promise<HeadlessResult> {
-  const [file, argv] = needsCmdWrapper(executable)
-    ? [getEnv(env, 'ComSpec') ?? 'cmd.exe', ['/d', '/c', executable, ...args]]
-    : [executable, args]
+  const { file, args: argv } = spawnTarget(executable, args, env)
   return new Promise((resolve) => {
     let stdout = ''
     let stderr = ''

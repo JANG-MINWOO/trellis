@@ -74,12 +74,6 @@ export interface IntentItem {
 
 export type TimelineItem = TurnItem | SessionItem | IntentItem
 
-const PERMISSION_NOTIFICATIONS = new Set([
-  'permission_prompt',
-  'elicitation_dialog',
-  'agent_needs_input',
-])
-
 function byTime(a: TrellisEvent, b: TrellisEvent): number {
   return a.ts - b.ts
 }
@@ -202,7 +196,7 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
       }
       case 'notification': {
         const turn = findTurn(e)
-        if (turn && turn.status === 'running' && PERMISSION_NOTIFICATIONS.has(e.data.type)) {
+        if (turn && turn.status === 'running' && e.data.needsInput === true) {
           turn.status = 'waiting'
           turn.waitingMessage = e.data.message
         }

@@ -4,6 +4,7 @@ import { DEFAULT_DECISIONS_DIR, DEFAULT_RISK_AREAS, DEFAULT_SPECS_DIR } from '@s
 import type { Project, ProjectPatch, ProjectView } from '@shared/types'
 import { stableId } from '../../lib/ids'
 import { readJson, writeJsonAtomic } from '../../lib/json-file'
+import { pathKey } from '../../platform/paths'
 
 export class ProjectRegistry {
   private constructor(
@@ -32,7 +33,7 @@ export class ProjectRegistry {
     const resolved = path.resolve(folder)
     const stat = await fs.stat(resolved)
     if (!stat.isDirectory()) throw new Error(`Not a folder: ${resolved}`)
-    const id = stableId(process.platform === 'win32' ? resolved.toLowerCase() : resolved)
+    const id = stableId(pathKey(resolved))
     const existing = this.get(id)
     if (existing) return view(existing)
     const project: Project = {

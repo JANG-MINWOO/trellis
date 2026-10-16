@@ -1,4 +1,5 @@
 import type { AgentId, LaunchMode, PermissionMode, TrellisEvent } from '@shared/types'
+import type { Platform } from '../../platform/os'
 
 export interface LaunchRequest {
   mode: LaunchMode
@@ -31,13 +32,21 @@ export interface AgentAdapter {
   /** Env vars the bridge config refers to. */
   bridgeEnv(token: string, projectId: string, terminalId: string): Record<string, string>
   normalize(raw: unknown, context: NormalizeContext): TrellisEvent | null
+  /** Longest the bridge may hold a Stop reply; the end-of-turn check must fit inside it. */
+  readonly stopReplyMs: number
+  /** How long the bridge may hold the reply to this hook payload before answering empty. */
+  replyTimeoutMs(raw: unknown): number
+  /** The agent is stopping again after Trellis sent the turn back once; do not block twice. */
+  isContinuedStop(raw: unknown): boolean
+  /** Reply body that makes the agent keep working on `reason` instead of ending the turn. */
+  blockStopReply(reason: string): Record<string, unknown>
   /**
    * Removes variables a parent agent session leaks into Trellis (e.g. when the dev build is started
    * from Claude Code). Left in place they make a new session think it is a sub-session.
    */
   scrubInheritedEnv(env: Record<string, string>): void
   /** Keystroke that makes the agent read an image from the system clipboard, if it has one. */
-  imagePasteKeys(platform: NodeJS.Platform): string | null
+  imagePasteKeys(platform: Platform): string | null
   /**
    * Arguments for a one-shot, tool-less, isolated run that answers with JSON matching `schema`.
    * Isolation matters: the user's own hooks and MCP servers must not run for Trellis' analysis.

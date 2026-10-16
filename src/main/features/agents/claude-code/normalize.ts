@@ -8,6 +8,8 @@ import type { NormalizeContext } from '../types'
 
 const LIMITS = { prompt: 4000, command: 1000, message: 2000, error: 1000, detail: 300, notice: 500 }
 const FILE_WRITING_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit'])
+/** Notifications that mean Claude is waiting for the human. */
+const ASKS_FOR_INPUT = new Set(['permission_prompt', 'elicitation_dialog', 'agent_needs_input'])
 
 type Raw = Record<string, unknown>
 
@@ -114,15 +116,18 @@ export function normalizeClaudeHook(rawInput: unknown, ctx: NormalizeContext): T
         kind: 'turn.stop',
         data: { lastMessage: truncate(str(raw.last_assistant_message), LIMITS.message) },
       }
-    case 'Notification':
+    case 'Notification': {
+      const type = str(raw.notification_type) || 'unknown'
       return {
         ...base,
         kind: 'notification',
         data: {
-          type: str(raw.notification_type) || 'unknown',
+          type,
           message: truncate(str(raw.message), LIMITS.notice),
+          needsInput: ASKS_FOR_INPUT.has(type),
         },
       }
+    }
     default:
       return null
   }

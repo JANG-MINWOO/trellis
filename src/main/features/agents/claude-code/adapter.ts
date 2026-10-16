@@ -4,7 +4,7 @@ import path from 'node:path'
 import { getEnv } from '../../../platform/env'
 import type { PermissionMode } from '@shared/types'
 import type { AgentAdapter, LaunchRequest } from '../types'
-import { BRIDGE_ENV, buildHookSettings } from './hook-settings'
+import { BRIDGE_ENV, buildHookSettings, STOP_HOOK_TIMEOUT_S } from './hook-settings'
 import { normalizeClaudeHook } from './normalize'
 
 /**
@@ -34,6 +34,16 @@ const PERMISSION_FLAGS = [
   '--dangerously-skip-permissions',
   '--allow-dangerously-skip-permissions',
 ]
+
+/** Answer before Claude gives up on the hook (it would then end the turn without our reply). */
+const STOP_REPLY_MS = (STOP_HOOK_TIMEOUT_S - 5) * 1000
+/** Other hooks only need the work done for them to start (e.g. the turn's snapshot). */
+const ACK_REPLY_MS = 1500
+
+const hookEvent = (raw: unknown): string =>
+  raw && typeof raw === 'object'
+    ? String((raw as Record<string, unknown>).hook_event_name ?? '')
+    : ''
 
 function permissionArgs(mode: PermissionMode): string[] {
   if (mode === 'claude-default') return []
@@ -99,6 +109,20 @@ export const claudeCodeAdapter: AgentAdapter = {
   },
 
   normalize: normalizeClaudeHook,
+
+  stopReplyMs: STOP_REPLY_MS,
+
+  replyTimeoutMs(raw) {
+    return hookEvent(raw) === 'Stop' ? STOP_REPLY_MS : ACK_REPLY_MS
+  },
+
+  isContinuedStop(raw) {
+    return hookEvent(raw) === 'Stop' && (raw as Record<string, unknown>).stop_hook_active === true
+  },
+
+  blockStopReply(reason) {
+    return { decision: 'block', reason }
+  },
 
   // --restricted ignores user/project/local settings (their hooks would otherwise fire for our
   // analysis prompt) while keeping the subscription login; --bare would drop OAuth entirely.

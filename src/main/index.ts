@@ -20,6 +20,7 @@ import { registerIpc } from './ipc'
 import { buildAppMenu } from './menu'
 import { resolveShellEnv } from './platform/shell-env'
 import { stopAllChildren } from './platform/children'
+import { isMac } from './platform/os'
 import { configureUserData } from './platform/user-data'
 import { newId } from './lib/ids'
 import { initLog, log, logFailure } from './lib/log'
@@ -98,15 +99,14 @@ async function bootstrap(): Promise<void> {
       await pipeline?.onPrompt(project, event.promptId)
     await events.append(event)
     if (event.kind === 'turn.stop') {
-      const active = Boolean((raw as { stop_hook_active?: unknown }).stop_hook_active)
-      const body = await pipeline?.onStop(project, event, active)
+      const reason = await pipeline?.onStop(project, event, adapter.isContinuedStop(raw))
       // A turn sent back by the guard is not finished; say so only when it really is.
-      if (!body) notifyForEvent(event, project.name, settings.get(), mainWindow)
-      return body
+      if (!reason) notifyForEvent(event, project.name, settings.get(), mainWindow)
+      return reason ? adapter.blockStopReply(reason) : undefined
     }
     notifyForEvent(event, project.name, settings.get(), mainWindow)
     return undefined
-  })
+  }, adapter.replyTimeoutMs)
   await bridge.start()
   const bridgeConfigFile = await adapter.prepareBridge(
     path.join(dataDir, 'agents', adapter.id),
@@ -160,6 +160,8 @@ async function bootstrap(): Promise<void> {
         runCheck: mayBlock,
         env,
         lang,
+        // The agent is waiting for the Stop reply; leave room for the rules and the reply.
+        checkTimeoutMs: adapter.stopReplyMs - 15_000,
       })
       if (!verdict) return null
       return {
@@ -252,7 +254,7 @@ async function bootstrap(): Promise<void> {
     else event.preventDefault()
   })
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    if (!isMac()) app.quit()
   })
   app.on('will-quit', () => {
     ptys.disposeAll()

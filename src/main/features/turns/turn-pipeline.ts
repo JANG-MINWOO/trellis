@@ -43,17 +43,18 @@ export class TurnPipeline {
   }
 
   /**
-   * Returns a hook response body when the turn should continue (guard found new violations),
-   * otherwise finishes the turn in the background so the agent is not kept waiting.
+   * Returns the reason to send the agent back with when the turn should continue (the guard found
+   * new violations), otherwise finishes the turn in the background so the agent is not kept
+   * waiting. `continued`: the agent already went back once for this turn.
    */
   async onStop(
     project: Project,
     stop: EventOf<'turn.stop'>,
-    stopHookActive: boolean,
-  ): Promise<Record<string, unknown> | undefined> {
+    continued: boolean,
+  ): Promise<string | undefined> {
     const promptId = stop.promptId
     if (!promptId) return undefined
-    if (project.guard.enforceRules && this.deps.guard && !stopHookActive) {
+    if (project.guard.enforceRules && this.deps.guard && !continued) {
       const peek = await this.deps.changes.turnChanges(project.id, project.path, promptId, false)
       if (peek && peek.files.length > 0) {
         this.deps.onCheck?.(project.id, true)
@@ -63,7 +64,7 @@ export class TurnPipeline {
         if (verdict?.reason) {
           this.sentBack.add(`${project.id}:${promptId}`)
           await this.append(project, stop, 'rules.check', { ...verdict.check, blocked: true })
-          return { decision: 'block', reason: verdict.reason }
+          return verdict.reason
         }
       }
     }

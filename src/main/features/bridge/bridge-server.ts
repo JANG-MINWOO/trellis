@@ -29,10 +29,8 @@ export class BridgeServer {
 
   constructor(
     private readonly handler: BridgeHandler,
-    /** Longest a hook waits for the handler; Claude never blocks longer than this on Trellis. */
-    private readonly ackTimeoutMs = 1500,
-    /** Stop may run the project's checks before answering (guard); its hook timeout is longer. */
-    private readonly stopTimeoutMs = 115_000,
+    /** Longest a hook waits for the handler; the agent never blocks longer than this on Trellis. */
+    private readonly replyTimeoutMs: (raw: unknown) => number,
   ) {}
 
   get url(): string {
@@ -97,16 +95,12 @@ export class BridgeServer {
       }
       if (!projectId) return reply(200)
       const terminalId = String(req.headers['x-trellis-terminal'] ?? '') || null
-      const isStop = (raw as { hook_event_name?: unknown } | null)?.hook_event_name === 'Stop'
       const work = this.handler({ raw, projectId, terminalId, receivedAt: Date.now() }).catch(
         logFailure('bridge', 'handling a hook event failed'),
       )
       let timer: NodeJS.Timeout | undefined
       const timeout = new Promise<undefined>((resolve) => {
-        timer = setTimeout(
-          () => resolve(undefined),
-          isStop ? this.stopTimeoutMs : this.ackTimeoutMs,
-        )
+        timer = setTimeout(() => resolve(undefined), this.replyTimeoutMs(raw))
       })
       void Promise.race([work, timeout]).then((body) => {
         clearTimeout(timer)

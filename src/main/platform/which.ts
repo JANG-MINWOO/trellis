@@ -5,11 +5,11 @@ import { getEnv } from './env'
 import { isMac, isWindows } from './os'
 
 /** Folders where CLI installers commonly put binaries, checked after PATH. */
-function wellKnownDirs(): string[] {
+function wellKnownDirs(env: NodeJS.ProcessEnv): string[] {
   const home = os.homedir()
   if (isWindows()) {
-    const local = process.env.LOCALAPPDATA ?? path.join(home, 'AppData', 'Local')
-    const roaming = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming')
+    const local = getEnv(env, 'LOCALAPPDATA') ?? path.join(home, 'AppData', 'Local')
+    const roaming = getEnv(env, 'APPDATA') ?? path.join(home, 'AppData', 'Roaming')
     return [
       path.join(home, '.local', 'bin'),
       path.join(roaming, 'npm'),
@@ -48,7 +48,7 @@ export function findExecutable(name: string, env: NodeJS.ProcessEnv): string | n
           .map((e) => e.toLowerCase()),
       ]
     : ['']
-  for (const dir of [...pathDirs, ...wellKnownDirs()]) {
+  for (const dir of [...pathDirs, ...wellKnownDirs(env)]) {
     for (const ext of exts) {
       // On Windows an extensionless file is never directly executable; skip it.
       if (isWindows() && ext === '') continue
@@ -60,6 +60,19 @@ export function findExecutable(name: string, env: NodeJS.ProcessEnv): string | n
 }
 
 /** Windows batch files cannot be spawned directly; they need cmd.exe. */
-export function needsCmdWrapper(file: string): boolean {
+function needsCmdWrapper(file: string): boolean {
   return isWindows() && /\.(cmd|bat)$/i.test(file)
+}
+
+/**
+ * What to actually spawn for `file args`: Windows .cmd/.bat shims (npm installs) run through
+ * cmd.exe. cmd.exe re-reads the arguments, so prefer real executables where there is a choice.
+ */
+export function spawnTarget(
+  file: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+): { file: string; args: string[] } {
+  if (!needsCmdWrapper(file)) return { file, args }
+  return { file: getEnv(env, 'ComSpec') ?? 'cmd.exe', args: ['/d', '/c', file, ...args] }
 }

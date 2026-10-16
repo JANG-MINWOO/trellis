@@ -128,3 +128,24 @@ describe('claudeCodeAdapter.isNothingToContinue', () => {
     expect(claudeCodeAdapter.isNothingToContinue('Welcome')).toBe(false)
   })
 })
+
+describe('claudeCodeAdapter Stop hook replies', () => {
+  it('holds only Stop long enough for the checks, and answers before the hook times out', () => {
+    const stop = claudeCodeAdapter.replyTimeoutMs({ hook_event_name: 'Stop' })
+    expect(stop).toBe(claudeCodeAdapter.stopReplyMs)
+    expect(stop).toBeLessThan(120_000)
+    expect(claudeCodeAdapter.replyTimeoutMs({ hook_event_name: 'PostToolUse' })).toBe(1500)
+    expect(claudeCodeAdapter.replyTimeoutMs(null)).toBe(1500)
+  })
+
+  it('recognizes a stop that follows a block, and builds the block reply', () => {
+    expect(
+      claudeCodeAdapter.isContinuedStop({ hook_event_name: 'Stop', stop_hook_active: true }),
+    ).toBe(true)
+    expect(claudeCodeAdapter.isContinuedStop({ hook_event_name: 'Stop' })).toBe(false)
+    expect(claudeCodeAdapter.blockStopReply('fix it')).toEqual({
+      decision: 'block',
+      reason: 'fix it',
+    })
+  })
+})

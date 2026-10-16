@@ -25,7 +25,9 @@ async function post(
 }
 
 async function start(handler: BridgeHandler, ackMs = 1500, stopMs = 2000): Promise<BridgeServer> {
-  server = new BridgeServer(handler, ackMs, stopMs)
+  server = new BridgeServer(handler, (raw) =>
+    (raw as { hook_event_name?: string }).hook_event_name === 'Stop' ? stopMs : ackMs,
+  )
   await server.start()
   return server
 }

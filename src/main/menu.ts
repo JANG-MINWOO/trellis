@@ -2,16 +2,17 @@ import { app, Menu, type MenuItemConstructorOptions } from 'electron'
 import type { MenuCommand } from '@shared/ipc'
 import { translate } from '@shared/i18n'
 import type { Language } from '@shared/types'
+import { isMac } from './platform/os'
 
 export function buildAppMenu(lang: Language, send: (command: MenuCommand) => void): void {
   const t = (key: string): string => translate(lang, key)
-  const isMac = process.platform === 'darwin'
+  const mac = isMac()
   // On Windows/Linux, Ctrl+C must reach the terminal as SIGINT, so edit shortcuts are shown but
   // not registered; the renderer handles copy/paste itself.
-  const editAccel = !isMac ? { registerAccelerator: false } : {}
+  const editAccel = !mac ? { registerAccelerator: false } : {}
 
   const template: MenuItemConstructorOptions[] = [
-    ...(isMac
+    ...(mac
       ? [
           {
             label: app.name,
@@ -41,7 +42,7 @@ export function buildAppMenu(lang: Language, send: (command: MenuCommand) => voi
           accelerator: 'CmdOrCtrl+O',
           click: () => send('open-folder'),
         },
-        ...(!isMac
+        ...(!mac
           ? ([
               { type: 'separator' },
               {
@@ -120,7 +121,7 @@ export function buildAppMenu(lang: Language, send: (command: MenuCommand) => voi
       submenu: [
         { role: 'minimize', label: t('menu.minimize') },
         { role: 'zoom', label: t('menu.zoom') },
-        ...(isMac
+        ...(mac
           ? ([
               { type: 'separator' },
               { role: 'front', label: t('menu.front') },

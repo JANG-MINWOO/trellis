@@ -83,7 +83,10 @@ describe('normalizeClaudeHook', () => {
         { hook_event_name: 'Notification', notification_type: 'permission_prompt', message: 'ok?' },
         ctx,
       ),
-    ).toMatchObject({ kind: 'notification', data: { type: 'permission_prompt' } })
+    ).toMatchObject({
+      kind: 'notification',
+      data: { type: 'permission_prompt', needsInput: true },
+    })
     expect(
       normalizeClaudeHook({ hook_event_name: 'SessionStart', source: 'resume' }, ctx),
     ).toMatchObject({
