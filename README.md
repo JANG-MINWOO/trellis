@@ -33,21 +33,21 @@ Trellis는 IDE가 아닙니다. 파일 내용이나 diff는 직접 보여 주지
 
 ## 앞으로 할 것
 
-M2~M4를 구현했고, 실제 프로젝트에서 써 보며 버그를 잡는 단계입니다. 순서와 완료 기준은 [docs/PLAN.md](docs/PLAN.md) §8에 있습니다.
+M2~M4를 구현했고, 0.2.0을 실제 프로젝트에서 써 보며 버그를 잡는 단계입니다. 순서와 완료 기준은 [docs/PLAN.md](docs/PLAN.md) §8에 있습니다.
 
-- M5 v1 마감: 큰 저장소 성능(분석을 작업 스레드로), 코드 서명, 자동 업데이트.
+- M5 v1 마감: 큰 저장소 성능(규칙 분석을 작업 스레드로, 이벤트 기록 회전), 코드 서명, 자동 업데이트, Windows 실기 확인.
 
 ## 어떻게 동작하나
 
-- 이벤트: Trellis가 claude를 실행할 때 `--settings`로 HTTP 훅을 붙입니다. 훅은 `127.0.0.1`에서 토큰으로 보호되는 Trellis 서버로 이벤트를 보냅니다. Trellis가 응답하지 않아도 Claude는 멈추지 않습니다. 대상 저장소의 `.claude` 설정은 건드리지 않고, 거기 있던 훅과 함께 돕니다. (ADR-0003)
+- 이벤트: Trellis가 claude를 실행할 때 `--settings`로 HTTP 훅을 붙입니다. 훅은 `127.0.0.1`에서 토큰으로 보호되는 Trellis 서버로 이벤트를 보냅니다. Trellis가 응답하지 않아도 Claude는 멈추지 않습니다. 작업 끝 검사를 켠 경우에만 Stop 훅의 답을 검사가 끝날 때까지(최대 약 2분) 미룹니다. 대상 저장소의 `.claude` 설정은 건드리지 않고, 거기 있던 훅과 함께 돕니다. (ADR-0003, 0027)
 - 변경: 훅이 아니라 git으로 계산합니다. Claude가 Bash로 만든 파일도 잡힙니다. 기준점은 임시 인덱스로 찍는 스냅샷이라 작업 트리, 인덱스, 브랜치를 건드리지 않습니다. (ADR-0014)
 - 분석: 턴이 끝나면 `claude -p`를 도구 없이, 사용자 설정의 훅과 MCP를 끈 채(`--restricted --strict-mcp-config`) 임시 폴더에서 한 번 실행해 결정과 동작 변경 후보를 JSON으로 받습니다. (ADR-0023)
 - 규칙: 대상 저장소의 `.trellis/rules.json`과 `.trellis/baseline.json`을 git 트리에서 읽어 검사합니다. 턴은 턴 시작 시점의 규칙으로 판단해, 에이전트가 규칙을 느슨하게 고쳐 통과할 수 없습니다. (ADR-0026, 0027)
-- 터미널 화면을 파싱하지 않습니다. Claude Code 업데이트로 바뀔 수 있는 부분(훅 입력 필드, CLI 플래그)은 `src/main/features/agents/claude-code/` 한 곳에 모았습니다.
+- 터미널 화면을 파싱하지 않습니다. Claude Code 업데이트로 바뀔 수 있는 부분(훅 입력 필드, 응답 형식, CLI 플래그)은 `src/main/features/agents/claude-code/` 한 곳에 모았고, 다른 곳에서 쓰면 린트가 막습니다. (ADR-0009)
 
 ## 데이터와 개인정보
 
-- 설정, 프로젝트 목록, 이벤트 기록(프롬프트와 명령 포함)은 앱 데이터 폴더에만 저장하고 외부로 보내지 않습니다. macOS는 `~/Library/Application Support/Trellis`, Windows는 `%APPDATA%\Trellis`이고, 개발 빌드는 `Trellis-dev`를 따로 씁니다.
+- 설정, 프로젝트 목록, 이벤트 기록(프롬프트와 명령 포함), 오류 로그(`logs/main.log`)는 앱 데이터 폴더에만 저장하고 외부로 보내지 않습니다. macOS는 `~/Library/Application Support/Trellis`, Windows는 `%APPDATA%\Trellis`이고, 개발 빌드는 `Trellis-dev`를 따로 씁니다. 설정이나 프로젝트 목록 파일이 깨져 읽을 수 없으면 덮어쓰지 않고 `.corrupt-<시각>`으로 옮겨 둡니다.
 - 대상 저장소의 파일은 고치지 않습니다. 변경 스냅샷 때문에 `.git/objects`에 참조 없는 객체가 남을 수 있는데, 이는 `git gc`가 정리합니다. git이 아닌 폴더에서 "git 시작하기"를 누르면 그때만 `git init`을 실행합니다.
 - 대상 저장소에는 사람이 버튼을 눌러 승인한 것만 씁니다: 결정 기록, 동작 명세, `.trellis/` 규칙·기준선, 시작 템플릿 파일. 덮어쓰지 않습니다.
 - 작업 분석을 켜 두면 턴마다 그 턴의 diff 일부(최대 약 4만 자)와 요청, 의도가 로그인한 Claude Code를 통해 Anthropic으로 한 번 더 전송됩니다. Claude 세션 자체가 보내는 것과 같은 경로이고, 프로젝트 설정에서 끌 수 있습니다.
@@ -60,6 +60,7 @@ M2~M4를 구현했고, 실제 프로젝트에서 써 보며 버그를 잡는 단
 - Windows 설치 파일은 CI에서 만들지만 실제 Windows PC에서는 아직 확인하지 않았습니다(키 처리, ConPTY 등).
 - 지원하는 에이전트는 Claude Code뿐이고, 2.1.29x에서 확인했습니다.
 - 셸 탭에서 직접 실행한 `claude`에는 이벤트 브리지가 붙지 않아 타임라인에 나오지 않습니다. Claude 탭을 쓰세요.
+- Claude 안에서 `/clear`나 대화 압축으로 새로 시작한 세션은 타임라인에 "대화 시작"으로 남지 않습니다(턴은 그대로 기록됩니다).
 - 같은 폴더에서 Claude 탭 여러 개가 동시에 파일을 고치면, 턴별 변경에 다른 탭의 변경이 섞일 수 있습니다.
 - macOS 설치 파일은 Apple Silicon(arm64)용만 만듭니다.
 - 작업 분석은 변경이 있는 턴마다 Claude 호출이 한 번 더 들어갑니다(sonnet 기준 약 8초, 구독 사용량). 분석이 결정을 빠뜨리거나 결정이 아닌 것을 올릴 수 있습니다.
@@ -84,7 +85,7 @@ npm install          # 의존성 설치, node-pty 실행 권한 복구, 네이�
 npm run dev          # 개발 빌드. 저장하면 화면은 바로 바뀌고 main은 다시 시작 (데이터 폴더 Trellis-dev)
 npm run install:local  # 지금 코드로 /Applications/Trellis.app 교체 (dmg 없이, 실행 중이면 종료할 때 교체)
 npm run check        # 타입·린트·포맷·i18n·구조 규칙·단위 테스트 (커밋 전 필수)
-npm run e2e          # 빌드 후 가짜 claude로 전 구간 스모크 테스트
+npm run e2e          # 빌드 후 가짜 claude로 e2e (실행·탭, 의도→결정·명세, 작업 끝 검사)
 npm run dist:mac     # macOS 설치 파일 (Windows 설치 파일은 Windows에서 dist:win)
 ```
 
@@ -95,7 +96,7 @@ TRELLIS_REAL_CLAUDE=1 npx playwright test real-claude   # 실제 claude로 전 �
 TRELLIS_BROWSE_PATH=<폴더> npx playwright test browse   # 기존 폴더를 Claude 없이 열어 패널 스크린샷
 ```
 
-Trellis로 Trellis를 개발할 때는 패키지된 안정 빌드에서 Claude를 실행하고, 그 안에서 `npm run dev`로 개발 빌드를 띄웁니다. 고치는 중인 앱으로 그 앱을 고치지 않기 위해서입니다(ADR-0011). 개발 빌드로 충분히 써 보고 만족하면 `npm run install:local`로 안정 빌드를 교체합니다. 설치 파일(dmg·exe)은 남에게 줄 버전을 찍을 때만 만듭니다(ADR-0021). 지금 실행 중인 빌드는 상태 바 오른쪽(예: `0.1.0+b5f7716`)에서 확인합니다.
+Trellis로 Trellis를 개발할 때는 패키지된 안정 빌드에서 Claude를 실행하고, 그 안에서 `npm run dev`로 개발 빌드를 띄웁니다. 고치는 중인 앱으로 그 앱을 고치지 않기 위해서입니다(ADR-0011). 개발 빌드로 충분히 써 보고 만족하면 `npm run install:local`로 안정 빌드를 교체합니다. 설치 파일(dmg·exe)은 남에게 줄 버전을 찍을 때만 만듭니다(ADR-0021). 지금 실행 중인 빌드는 상태 바 오른쪽(예: `0.2.0+14ecc50`)에서 확인합니다.
 
 코드 구조와 작업 규칙은 [AGENTS.md](AGENTS.md)에 있습니다. 사람과 에이전트(Claude Code, Codex 등)가 같이 따르는 규칙이고, `CLAUDE.md`는 이 파일의 심볼릭 링크입니다.
 

@@ -4,8 +4,8 @@
 > 범위·순서·완료 기준을 바꾸려면 먼저 이 문서를 고치고(미누와 합의), 그다음에 코드를 고친다.
 > 왜 이렇게 정했는지는 `docs/BACKGROUND.md`, 개별 결정은 `docs/decisions/`, 진행 기록은 `docs/worklog/`에 있다.
 
-- 최종 갱신: 2026-10-09 (M1.1 반영)
-- 현재 단계: **M1 — 셀프 호스팅 가능한 첫 버전**. 구현은 끝났고, 완료 기준 중 미누가 직접 해야 하는 항목(실사용·Windows 실행·실험 기준점)이 남았다. (§8 체크리스트가 진행 상황의 원본)
+- 최종 갱신: 2026-10-16 (0.2.0 고정 점검)
+- 현재 단계: **0.2.0 고정.** M1~M4의 구현은 끝났다(0.2.0). 남은 것은 실사용으로 확인하는 완료 기준(M1의 1·2·3b·4, M2~M4)과 M5다. 버전 태그는 아직 없다. (§8 체크리스트가 진행 상황의 원본)
 
 ---
 
@@ -31,7 +31,7 @@
 2. **사람의 주의는 diff가 아니라 결정에.** 사람이 쓰는 시간은 변경량이 아니라 결정 개수에 비례해야 한다. 대부분의 변경은 사람 없이 지나간다.
 3. **의도 레이어는 3층, 원본은 하나.** 동작(업무 용어) / 결정과 결과(결과·대가) / 구현(기술 용어). 보는 사람에 따라 펼쳐지는 층만 다르다. 문서를 두 벌로 만들지 않는다.
 4. **기계가 막게.** 규율은 문장이 아니라 규칙·테스트·훅으로 집행한다. 사람과 AI의 기억·의지에 맡기지 않는다.
-5. **대상 저장소를 함부로 건드리지 않는다.** 이벤트 수집은 실행 옵션으로 붙이고 대상 저장소의 설정 파일은 수정하지 않는다. 대상 저장소에 쓰는 것은 사람이 승인한 문서(결정·스펙·규칙)뿐이고, 위치는 프로젝트별로 설정한다.
+5. **대상 저장소를 함부로 건드리지 않는다.** 이벤트 수집은 실행 옵션으로 붙이고 대상 저장소의 설정 파일은 수정하지 않는다. 대상 저장소에 쓰는 것은 사람이 승인한 문서(결정·스펙·규칙·기준선)와, 사람이 미리 보고 고른 시작 템플릿(없는 파일만, ADR-0029)뿐이다. 위치는 프로젝트별로 설정한다.
 6. **두 벌 금지, 파생값 저장 금지.** 같은 사실을 두 곳에 적지 않는다. 계산할 수 있는 값은 저장하지 않고 원장에서 계산한다.
 7. **IDE를 다시 만들지 않는다.** 편집기·파일 내용·diff 뷰어는 VS Code 등에 맡긴다. Trellis에만 있어야 하는 것에 집중한다.
 8. **핵심은 스택·에이전트를 가리지 않고, 차이는 어댑터로.** Godot 게임, Electron 앱, 마크다운+셸 하네스, Spring 백엔드에 모두 쓸 수 있어야 한다.
@@ -60,27 +60,28 @@
 
 | 개념 | 설명 |
 |---|---|
-| 프로젝트 (Project) | Trellis에 등록한 폴더 하나. 경로, 이름, 기록 언어, 결정 기록 위치, 위험 영역 설정을 가진다 |
-| 에이전트 세션 (AgentSession) | 프로젝트에서 실행한 에이전트 대화 하나. Claude Code의 session_id와 연결 |
-| 이벤트 (TrellisEvent) | 에이전트 무관 정규화 이벤트: session.start / prompt.submit / tool.use / file.edit / command.run / turn.stop / notification / session.end / intent.set |
-| 턴 (Turn) | 프롬프트 하나 → 도구 사용들 → 종료까지. 이벤트에서 **계산**한다(저장하지 않음) |
-| 의도 (Intent) | 사람이 쓴 "이번 작업에서 하려는 것 / 하면 안 되는 것 / 예상 영향" |
-| 변경 묶음 (ChangeSet, Area) | 기준점(세션 시작 또는 HEAD) 대비 파일 변경을 영역(기능·폴더)별로 묶은 것. git에서 **계산** |
-| 결정 (Decision) | 무엇을 / 왜 / 대안 / 결과와 대가. 3층 중 "결정과 결과" 층 |
-| 스펙 (Spec) | 동작 층의 표기: EARS 요구사항, Given/When/Then, 결정 테이블, 상태 다이어그램, 불변식 |
-| 규칙 (Rule) | 기계가 검사하는 구조 규칙(경계·크기·중복·순환). 기준선(래칫)을 가진다 |
-| 건강 지표 (HealthMetric) | 규칙 위반 수, 큰 파일, 폴더 밀집도 등. 추세로 본다 |
-| 에이전트 어댑터 (AgentAdapter) | 에이전트별 실행 명령·이벤트 브리지·이벤트 정규화. v1은 Claude Code만 구현 |
-| 스택 어댑터 (StackAdapter) | 언어·프레임워크별 import 추출·규칙 도구 연결. M3부터 |
+| 프로젝트 (Project) | Trellis에 등록한 폴더 하나. 경로, 이름, 기록 언어, 결정 기록 위치, 명세 위치, 분석 켜기, 확인 필요 영역(`riskAreas`), 작업 끝 검사 설정을 가진다 |
+| 에이전트 세션 (`sessionId`, 타임라인의 SessionItem) | 프로젝트에서 실행한 에이전트 대화 하나. Claude Code의 session_id와 연결 |
+| 이벤트 (TrellisEvent) | 에이전트 무관 정규화 이벤트. 에이전트가 보낸 것: session.end / prompt.submit / tool.use / tool.fail / turn.stop / notification. Trellis가 남기는 것: session.start / turn.changes / intent.set / decision.candidate·resolved / behavior.candidate·resolved / analysis.run / rules.check / health.snapshot. 파일 편집·명령은 tool.use 안의 필드다 |
+| 턴 (TurnItem) | 프롬프트 하나 → 도구 사용들 → 종료까지. 이벤트에서 **계산**한다(저장하지 않음, `shared/timeline.ts`) |
+| 의도 (IntentData) | 사람이 쓴 "이번 작업에서 하려는 것 / 하면 안 되는 것 / 바뀔 것 같은 곳" (ADR-0025) |
+| 변경 묶음 (ChangeReport, ChangeGroup) | 기준점(세션 시작 또는 HEAD) 대비 파일 변경을 영역(기능·폴더)별로 묶은 것. git에서 **계산** |
+| 결정 (DecisionCandidate, DecisionDoc) | 무엇을 / 왜 / 대안 / 결과와 대가. 3층 중 "결정과 결과" 층. 후보는 원장에, 승인한 것은 결정 기록 파일로 |
+| 스펙 (SpecArea, SpecItem) | 동작 층의 표기: 영역별 마크다운에 동작(EARS)과 불변식, 고정 번호 B-/I- (ADR-0024) |
+| 규칙 (Violation, `.trellis/rules.json`) | 기계가 검사하는 구조 규칙(경계·크기·폴더 밀집·중복·순환). 기준선(래칫, `.trellis/baseline.json`)을 가진다 |
+| 건강 지표 (HealthReport, HealthSnapshot) | 새 위반 수, 큰 파일, 폴더 밀집도, 문서 어긋남. 하루 한 번 스냅샷으로 추세를 본다 |
+| 에이전트 어댑터 (AgentAdapter) | 에이전트별 실행 인자·이벤트 브리지·정규화·훅 응답 형식. v1은 Claude Code만 구현 |
+| 스택 어댑터 (타입 없음, `rules/facts.ts`) | 언어별 import 추출(TS/JS, Python, GDScript, Java/Kotlin, 셸). 검사 도구는 프로젝트의 검사 명령으로 연결 |
 
 ## 6. 아키텍처 개요
 
 - **Electron + React + TypeScript** (electron-vite 빌드, electron-builder 패키징). 터미널은 xterm.js + node-pty. (ADR-0002)
 - 프로세스 구성: `main`(Node — 파일·git·pty·이벤트 서버) / `preload`(타입이 정해진 최소 API만 노출) / `renderer`(React UI). `shared`는 양쪽이 쓰는 타입과 순수 함수.
-- **이벤트 브리지** (ADR-0003): Trellis가 claude를 실행할 때 `--settings <생성한 파일>`로 **HTTP 훅**을 붙인다. 훅은 `127.0.0.1:<임의 포트>`의 Trellis 서버로 이벤트 JSON을 POST한다. 토큰과 프로젝트 ID는 헤더로(`allowedEnvVars`), 서버가 꺼져 있어도 Claude는 멈추지 않는다(HTTP 훅 실패는 non-blocking). 대상 저장소의 `.claude` 설정은 건드리지 않고, 기존 훅과 병합되어 함께 돈다.
+- **이벤트 브리지** (ADR-0003): Trellis가 claude를 실행할 때 `--settings <생성한 파일>`로 **HTTP 훅**을 붙인다. 훅은 `127.0.0.1:<임의 포트>`의 Trellis 서버로 이벤트 JSON을 POST한다. 토큰과 프로젝트 ID는 헤더로(`allowedEnvVars`), 서버가 꺼져 있어도 Claude는 멈추지 않는다(HTTP 훅 실패는 non-blocking). 대상 저장소의 `.claude` 설정은 건드리지 않고, 기존 훅과 병합되어 함께 돈다. 대부분의 훅은 1.5초 안에 빈 응답을 받는다. Stop만 작업 끝 검사를 위해 최대 115초 기다렸다가 `{decision: "block"}`으로 턴을 되돌려 보낼 수 있다(ADR-0027). 훅 필드·응답 형식 같은 Claude Code 고유의 것은 어댑터 폴더에만 둔다(ADR-0009 덧붙임).
 - **진실은 git**: 변경 묶음은 훅 이벤트가 아니라 git에서 계산한다(Bash로 만든 변경도 잡힌다). 훅 이벤트는 "어느 턴이 어느 파일을 바꿨나"의 귀속에만 쓴다. 세션 기준점은 Claude를 띄우기 직전에 임시 인덱스(`GIT_INDEX_FILE`) + `git write-tree`로 작업 트리 전체를 tree 객체로 찍어 잡는다(작업 트리·실제 인덱스·refs를 건드리지 않음, 추적 안 된 파일 포함). (ADR-0014)
-- **AI 분석**(M2~): `claude -p --output-format json --json-schema … --tools "" --no-session-persistence`로 호출한다. 별도 API 키 없이 로그인된 구독을 쓴다. (ADR-0004)
-- **데이터 위치**: 앱 데이터 폴더(userData)에 설정·프로젝트 목록·이벤트 원장(`events.jsonl`, append-only)·의도. 대상 저장소에는 사람이 승인한 문서만. 개발 빌드는 별도 데이터 폴더를 쓴다(안정 빌드와 섞이지 않게).
+- **AI 분석**(M2~): 턴이 끝나고 파일이 바뀌었으면 `claude -p --restricted --strict-mcp-config --tools "" --no-session-persistence --output-format json --json-schema … --model <모델>`을 임시 폴더에서 한 번 실행해 결정·동작 변경 후보를 받는다. 사용자의 훅·MCP는 돌지 않고, 별도 API 키 없이 로그인된 구독을 쓴다. (ADR-0004, ADR-0023)
+- **구조 규칙**(M3): 파일을 git 트리(`ls-tree` + `cat-file --batch`)에서 읽고 내용 단위로 캐시한다. 규칙은 대상 저장소의 `.trellis/rules.json`, 기준선은 `.trellis/baseline.json`(ADR-0026). 작업 끝 검사는 턴 시작·끝 트리를 비교해 새 위반과 검사 명령 실패만 되돌린다(ADR-0027).
+- **데이터 위치**: 앱 데이터 폴더(userData)에 설정·프로젝트 목록·이벤트 원장(`events.jsonl`, append-only)·의도·오류 로그(`logs/main.log`, ADR-0031). 대상 저장소에는 사람이 승인한 문서만. 개발 빌드는 별도 데이터 폴더를 쓴다(안정 빌드와 섞이지 않게). 읽지 못하는 설정·프로젝트 파일은 덮어쓰지 않고 `.corrupt-<시각>`으로 옮겨 둔다.
 - **macOS GUI 앱의 PATH 문제**: Finder로 실행한 앱은 셸 PATH를 못 받는다 → 시작 시 로그인 셸 환경을 읽어 claude·git·Claude의 Bash 도구가 사용자 PATH로 돌게 한다.
 - **보안**: 브리지 서버는 127.0.0.1에만 열고 토큰이 필수. contextIsolation·sandbox 켜기, nodeIntegration 끄기, CSP. 이벤트(프롬프트·명령 포함)는 로컬에만 저장하고 외부로 보내지 않는다.
 
@@ -130,7 +131,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] 건강 패널(기본 지표): 파일 수, 큰 파일 상위, 300줄 초과 파일 수, 밀집 폴더
 - [x] 온보딩: 언어 선택, claude·git 설치 확인, 첫 프로젝트 추가
 - [x] 제품 수준 UI: 레이아웃 B, 리사이즈·접기, 상태 바, 빈 상태, 다크/라이트, 알림, 앱 아이콘
-- [x] 테스트: 단위 테스트 45개(실제 git 저장소로 변경 계산을 확인하는 통합 테스트 포함) + Electron 스모크 테스트(가짜 claude로 브리지 전 구간, 패키지 앱으로도 통과)
+- [x] 테스트: 단위 테스트(M1 때 45개, 실제 git 저장소로 변경 계산을 확인하는 통합 테스트 포함) + Electron 스모크 테스트(가짜 claude로 브리지 전 구간, 패키지 앱으로도 통과). 지금 수는 아래 0.2.0 고정 항목
 - [x] 실제 claude로 브리지 동작 확인 (`TRELLIS_REAL_CLAUDE=1 npx playwright test real-claude`)
 - [x] macOS 패키지 빌드 실행 확인, CI에서 macOS·Windows 설치 파일 생성
 
@@ -164,10 +165,10 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] 작업 종료(Stop) 시, 변경이 있으면 diff 요약 + 의도 + 기존 결정 목록을 `claude -p`(도구 없음, JSON 스키마)로 분석해 "새 결정 후보"를 만든다 — 격리 플래그·한 번 호출로 결정+동작, ADR-0023
 - [x] 결정 카드: 무엇을 / 결과와 대가(앞) / AI가 짐작한 이유(접힘) → 사람이 이유를 직접 써서 [기록하기], [결정 아님], [AI 추측을 이유로 기록](기록에 "AI 추측" 표시)
 - [x] 승인된 결정을 프로젝트의 결정 기록 위치에 문서로 저장 (프로젝트 기록 언어, 템플릿, 번호 이어 쓰기, 덮어쓰지 않음)
-- [x] 위험 영역(경로 글롭: auth, payment, migration 등) 설정 → 위험 영역 변경은 항상 카드 (분석을 꺼도)
+- [x] 확인 필요 영역(경로 글롭: auth, payment, migration 등, 코드에서는 riskAreas) 설정 → 이 영역의 변경은 항상 카드 (분석을 꺼도)
 - [x] 결정 기록 위치 설정: 기본 `docs/decisions/`, "기록 안 함"(비우면 Trellis 원장에만), 다른 경로. 이미 결정 원장이 있는 저장소와 두 벌이 되지 않게
 - [x] 분석 끄기(프로젝트별)·모델 선택·호출 횟수 표시 (구독 사용량 소모). 실측: sonnet 7.7초, 약 $0.03/회 (구독 환산 표시값)
-- 완료 기준: 두 프로젝트에서 1주 사용, 결정 카드의 정탐/오탐을 experiment-log에 기록
+- [ ] 완료 기준: 두 프로젝트에서 1주 사용, 결정 카드의 정탐/오탐을 experiment-log에 기록 (미누)
 
 ### M3 — 구조 규칙 + 건강 + 가드레일 (F7)
 
@@ -179,7 +180,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] 건강 추세: "지난주보다 나빠진 곳" — 하루 한 번 스냅샷, ADR-0028
 - [x] 시작 템플릿: 스택 감지 → 규칙 파일·지침(AGENTS.md + `@AGENTS.md` CLAUDE.md)·결정/명세 README. 없는 파일만, 미리 보기 후 — ADR-0029. 테스트 뼈대는 프레임워크 몫으로 남김
 - [x] 팀 공유 규칙을 대상 저장소에 둘지 결정 — 둔다(`.trellis/`), ADR-0026
-- 완료 기준: hearthwild에 기준선을 잡고 1주 운영, 새 위반이 실제로 막히는지 확인
+- [ ] 완료 기준: hearthwild에 기준선을 잡고 1주 운영, 새 위반이 실제로 막히는지 확인 (미누)
 
 ### M4 — 의도 레이어 + 동작 diff + 예측 비교 (F8, F9, F4 확장)
 
@@ -189,23 +190,31 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] 문서-코드 어긋남 감지: 지침 파일·README·docs 최상위·명세가 가리키는데 없는 경로 — ADR-0028
 - [x] 예측 → 비교: 작업 전 영향 영역 클릭 예측, 작업 후 턴 카드에 "예상 밖 변경"·"그대로인 곳" — ADR-0025
 - [x] 의도 확장: 목표/하면 안 되는 것/예상 영역, 하면 안 되는 것 → 불변식 후보로 연결
-- 완료 기준: 2주 사용 후 지표 3(설명 가능성) 측정
+- [ ] 완료 기준: 2주 사용 후 지표 3(설명 가능성) 측정 (미누)
 
 ### 0.2.0 고정 (2026-10-16)
 
 미누 요청: 완성도를 점검하고 모자란 것·버그를 잡아 0.2.0을 제대로 고정한다. 구현된 기능의 기획은 바꾸지 않는다. 점검 결과는 `docs/worklog/2026-10-16.md`.
 
-- [ ] 버그: 깨진 설정·프로젝트 파일이 빈 값으로 덮이지 않게, 시작 실패 처리, 자식 프로세스 stdin 오류, 프로젝트 전환·변경 조회 응답 순서, 여러 Claude 탭에서 대상 탭, 프로젝트를 바꿔도 남는 패널 내용
-- [ ] 오류 기록: main에 로그 파일 (ADR-0031)
-- [ ] 문서: PLAN·AGENTS·README 두 개를 0.2.0에 맞춤, 작업일지에만 있던 할 일을 PLAN으로, 이력 재작성 전 해시 정리
-- [ ] 규칙 집행: `process.platform`·`exec`·Claude 고유 필드를 정해진 폴더 밖에서 쓰면 검사가 실패하게, dependency-cruiser 빈틈 메우기
-- [ ] 구조 정리: 세 번째 중복 옮기기, 300줄 넘는 파일 나누기, IPC의 업무 로직을 기능 폴더로
-- [ ] CI: intent·guard e2e도 돌리기
+- [x] 버그: 깨진 설정·프로젝트 파일이 빈 값으로 덮이지 않게, 시작 실패 처리, 자식 프로세스 stdin 오류, 프로젝트 전환·변경 조회 응답 순서, 여러 Claude 탭에서 대상 탭, 프로젝트를 바꿔도 남는 패널 내용
+- [x] 오류 기록: main에 로그 파일 (ADR-0031)
+- [x] 문서: PLAN·AGENTS·README 두 개를 0.2.0에 맞춤, 작업일지에만 있던 할 일을 PLAN으로, 이력 재작성 전 해시 정리
+- [x] 규칙 집행: `process.platform`·`exec`·Claude 고유 필드를 정해진 폴더 밖에서 쓰면 검사가 실패하게, dependency-cruiser 빈틈 메우기
+- [x] 구조 정리: 세 번째 중복 옮기기, 300줄 넘는 파일 나누기, IPC의 업무 로직을 기능 폴더로, renderer store를 slice로 (ADR-0032)
+- [x] CI: intent·guard e2e도 돌리기
+- [x] 테스트: 단위·통합 120개, e2e는 smoke·intent·guard(가짜 claude, CI에서도) + 직접 켜는 real-claude·browse
 - [ ] 안정 빌드 교체(`install:local`), 설치된 빌드 표시가 HEAD와 맞는지 확인
+- [ ] 버전 태그 `v0.2.0` — 태그를 달면 Releases에 dmg·exe가 공개되므로 미누 확인 후
 
 ### M5 — v1 마감
 
 - [ ] 사용성 다듬기, 큰 저장소 성능, 오류 처리·보고
+  - 이벤트 원장: 파일 회전, 끝에서부터 읽기(지금은 읽을 때마다 파일 전체를 읽고, 후보 찾기는 2만 개, 건강 추세는 처음 한 번 전체)
+  - 규칙 분석을 작업 스레드로(지금은 메인 프로세스, 1만 파일 이상에서 문제)
+  - 타임라인을 바뀐 턴만 다시 계산·그리기(지금은 이벤트마다 2000개 창 전체)
+  - renderer 오류도 로그에 남기기, 확인 창을 앱 언어로(지금은 `window.confirm`이라 OS 언어), 파일 트리 키보드 조작
+- [ ] 배포 빌드: 코드 압축(소스맵은 따로 보관), renderer 번들 분할 검토(지금 약 1.9MB)
+- [ ] Windows 실기 확인: Ctrl+C/V, ConPTY, npm 설치판 `claude.cmd`(cmd.exe가 `--json-schema` 같은 인자를 다시 해석하는 문제 포함), `CLAUDE.md` 심볼릭 링크(`core.symlinks`)
 - [ ] 코드 서명(macOS Developer ID 공증, Windows 인증서) 결정 (비용 포함, ADR)
 - [x] 배포 채널: 이 저장소의 Releases(저장소 공개, ADR-0030)
 - [ ] 자동 업데이트(electron-updater): 앱 시작 시 새 버전 확인 → 받아 두고 재시작 때 설치, 안정·베타 채널 (ADR-0021 제안을 확정)
@@ -241,7 +250,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - 줄바꿈: `.gitattributes`로 LF 고정.
 
 **대상 저장소 존중**
-- 대상 저장소의 `.claude/settings*.json`, `CLAUDE.md`, `AGENTS.md`를 수정하지 않는다.
+- 대상 저장소의 `.claude/settings*.json`, `CLAUDE.md`, `AGENTS.md`를 수정하지 않는다. 시작 템플릿은 이 파일들이 없을 때만, 사람이 미리 보고 고른 경우에 새로 만든다(ADR-0029). git 저장소가 아니면 사람이 버튼을 눌렀을 때만 `git init`.
 - Trellis 기능을 개발·테스트할 때 실제 대상 저장소(hearthwild, minu-future 등)에 쓰지 않는다. 테스트는 임시 폴더에서.
 
 **안정성**
@@ -250,7 +259,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - 이벤트 원장은 append-only. 손상된 줄은 건너뛰고 앱은 계속 돈다.
 
 **성능**
-- 파일 트리는 펼칠 때 읽는다(lazy). `.git`, `node_modules`는 숨긴다.
+- 파일 트리는 펼칠 때 읽는다(lazy). `.git`과 OS 파일(.DS_Store 등)은 숨기고, git이 무시하는 파일(node_modules 등)은 흐리게 보여 준다.
 - git 명령은 디바운스·직렬화. 큰 저장소에서 건강 지표는 상한을 둔다.
 
 **비용·개인정보**
@@ -292,9 +301,9 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 
 | 리스크 | 대응 |
 |---|---|
-| Claude Code 업데이트로 훅 필드·플래그가 바뀜 | 어댑터 한 곳에 모으고, 스모크 테스트로 조기 감지 |
+| Claude Code 업데이트로 훅 필드·플래그가 바뀜 | 어댑터 한 곳에 모으고(밖에서 쓰면 ESLint가 막음), 업데이트 뒤 실제 claude e2e(`real-claude`)로 확인. CI의 e2e는 가짜 claude라 이것을 잡지 못한다 |
 | Windows에서 node-pty·셸 차이 | CI 매트릭스 빌드, 셸 무관 HTTP 훅, argv 실행 |
-| 결정 감지 오탐이 많아 사람이 무시하게 됨 | 정탐/오탐 기록(M2), 위험 영역 위주로 시작 |
+| 결정 감지 오탐이 많아 사람이 무시하게 됨 | 정탐/오탐 기록(M2), 확인 필요 영역 위주로 시작 |
 | 도구 다듬기가 목적이 됨 | 주간 지표 기록, 지표와 무관한 개선은 뒤로 |
 | 문서가 코드와 어긋남 | 체크리스트 + M4 어긋남 감지 |
 | 대상 저장소의 기존 체계와 충돌 | 무수정 원칙, 결정 기록 위치 설정 |
@@ -303,16 +312,20 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 
 - 셸 탭에서 사람이 직접 `claude`를 실행해도 브리지가 붙게 할지 (PATH 앞에 shim) — M1 이후
 - 같은 프로젝트에서 Claude 탭 여러 개가 동시에 일할 때 탭마다 git worktree를 줄지 (턴별 변경이 섞이는 문제) — 필요해지면
-- 팀 공유 설정·규칙을 대상 저장소(`.trellis/`)에 둘지 — M3
-- 결정 문서 템플릿 형식 — M2
-- 스펙 저장 형식 — M4
-- 코드 서명 비용 — M5 (라이선스는 MIT로 정함, ADR-0030)
+- "이어서 하기" 때 Claude Code의 대화 기록(`~/.claude/projects/…/*.jsonl`)에서 지난 턴을 타임라인으로 가져올지 — Claude 내부 형식에 기대므로 ADR 필요
+- `/clear`나 대화 압축으로 새로 시작한 세션을 기록할지 — 지금은 Trellis가 띄울 때의 시작만 남는다(ADR-0003 덧붙임)
+- 코드 서명 비용 — M5
+
+정한 것: 규칙은 대상 저장소의 `.trellis/`에(ADR-0026), 결정 문서 형식(ADR-0023, `src/shared/decisions.ts`), 스펙 형식(ADR-0024), 라이선스 MIT(ADR-0030).
+
+개선 후보(지표와 무관하면 뒤로): 한글 터미널 글꼴(D2Coding 등) 번들, README 스크린샷(`TRELLIS_SCREENSHOTS=<폴더> npm run e2e`, 실제 프로젝트 화면은 쓰지 않음).
 
 ## 14. 저장소 구조 (요약)
 
 ```
 trellis/
 ├── AGENTS.md            ← 에이전트 작업 규칙 (CLAUDE.md는 이 파일의 심볼릭 링크)
+├── README.md, README.en.md, LICENSE (MIT)
 ├── docs/
 │   ├── PLAN.md          ← 이 문서 (작업 기준)
 │   ├── BACKGROUND.md    ← 판단 근거
@@ -320,13 +333,14 @@ trellis/
 │   ├── worklog/         ← 작업일지 (세션별)
 │   └── experiment-log.md
 ├── src/
-│   ├── shared/          ← main·renderer 공용 타입과 순수 함수
-│   ├── main/            ← Electron 메인 (features/*, platform/*)
+│   ├── shared/          ← main·renderer 공용 타입(types/)과 순수 함수, 화면 문구(locales/)
+│   ├── main/            ← Electron 메인: features/*, ipc/(얇은 IPC), lib/(파일·프로세스·git), platform/(OS별)
 │   ├── preload/
-│   └── renderer/        ← React UI (app/, features/*, components/ui/, lib/, state/, styles/, i18n/)
+│   └── renderer/        ← React UI: app/, features/*, components/ui/, lib/, state/(store slice), styles/, i18n/
 ├── build/               ← 앱 아이콘 (icon.svg → icon.png)
 ├── scripts/             ← Node 스크립트 (크로스 플랫폼)
-├── tests/e2e/           ← Electron e2e (스모크, 실제 claude, 둘러보기)
+├── tests/e2e/           ← Electron e2e: smoke·intent·guard(가짜 claude, fixtures/), real-claude·browse(직접 켬), support.ts
+├── .claude/settings.json ← 이 저장소에서 일하는 Claude의 작업 끝 검사 훅
 └── .github/workflows/
 ```
 

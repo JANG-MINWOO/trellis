@@ -16,3 +16,6 @@
 
 ## 결과와 대가
 구독 사용량을 같이 쓴다 → 변경이 있을 때만 호출하고, 끌 수 있게 하고, 횟수를 보여준다.
+
+## 덧붙임 (2026-10-10)
+실제 인자는 ADR-0023에서 바뀌었다: `-p --restricted --strict-mcp-config --tools "" --no-session-persistence --output-format json --json-schema <스키마> --model <모델>`, 임시 폴더에서 실행. `--restricted`·`--strict-mcp-config`는 사용자의 훅과 MCP 서버가 분석 호출에서 돌지 않게 한다. 인자는 `src/main/features/agents/claude-code/adapter.ts`의 `headlessArgs`에 있다.
