@@ -1,6 +1,12 @@
 // Derives turns and agent state from the event ledger. Nothing here is stored (principle: no
 // derived values next to the source).
-import { areaOf } from './areas'
+import {
+  attachTasks,
+  deriveTasks,
+  type IntentItem,
+  type TaskEndItem,
+  type TurnPrediction,
+} from './tasks'
 import type {
   AnalysisRun,
   BehaviorCandidate,
@@ -12,6 +18,8 @@ import type {
   ToolUse,
   TrellisEvent,
 } from './types'
+
+export type { IntentItem, TaskEndItem }
 
 export type TurnStatus = 'running' | 'waiting' | 'done' | 'interrupted'
 
@@ -40,8 +48,11 @@ export interface TurnItem {
    */
   changes: ChangeEntry[] | null
   changesTruncated: boolean
-  /** The intent in force when the prompt was sent (for prediction vs. reality). */
+  /** The task the turn belongs to and its intent when the prompt was sent (ADR-0034). */
+  taskId: string | null
   intent: IntentData | null
+  /** What this turn changed against the task's prediction; null without a prediction. */
+  prediction: TurnPrediction | null
   decisions: DecisionCandidate[]
   behaviors: BehaviorCandidate[]
   analysis: AnalysisRun | null
@@ -65,14 +76,7 @@ export interface SessionItem {
   model: string | null
 }
 
-export interface IntentItem {
-  type: 'intent'
-  key: string
-  ts: number
-  text: string
-}
-
-export type TimelineItem = TurnItem | SessionItem | IntentItem
+export type TimelineItem = TurnItem | SessionItem | IntentItem | TaskEndItem
 
 function byTime(a: TrellisEvent, b: TrellisEvent): number {
   return a.ts - b.ts
@@ -82,7 +86,6 @@ function byTime(a: TrellisEvent, b: TrellisEvent): number {
 export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
   const items: TimelineItem[] = []
   const turnsByPrompt = new Map<string, TurnItem>()
-  let intent: IntentData | null = null
   const openTurnBySession = new Map<string, TurnItem>()
 
   const sessionKey = (e: TrellisEvent): string => e.sessionId ?? `terminal:${e.terminalId ?? '?'}`
@@ -126,10 +129,6 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
           model: null,
         })
         break
-      case 'intent.set':
-        intent = e.data
-        items.push({ type: 'intent', key: e.id, ts: e.ts, text: e.data.text })
-        break
       case 'decision.candidate':
       case 'behavior.candidate':
       case 'analysis.run':
@@ -168,7 +167,9 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
           files: [],
           changes: null,
           changesTruncated: false,
-          intent,
+          taskId: null,
+          intent: null,
+          prediction: null,
           decisions: [],
           behaviors: [],
           analysis: null,
@@ -222,7 +223,24 @@ export function buildTimeline(events: readonly TrellisEvent[]): TimelineItem[] {
       }
     }
   }
+  const turns = items.filter((i): i is TurnItem => i.type === 'turn')
+  return inTimeOrder([...items, ...attachTasks(turns, deriveTasks(events))])
+}
+
+/** At the same moment: a task ends, the next one starts, then sessions and turns follow. */
+const RANK: Record<TimelineItem['type'], number> = { 'task-end': 0, intent: 1, session: 2, turn: 3 }
+const timeOf = (item: TimelineItem): number => (item.type === 'turn' ? item.startedAt : item.ts)
+
+function inTimeOrder(items: TimelineItem[]): TimelineItem[] {
   return items
+    .map((item, index) => ({ item, index }))
+    .sort(
+      (a, b) =>
+        timeOf(a.item) - timeOf(b.item) ||
+        RANK[a.item.type] - RANK[b.item.type] ||
+        a.index - b.index,
+    )
+    .map(({ item }) => item)
 }
 
 function addTool(turn: TurnItem, e: EventOf<'tool.use'> | EventOf<'tool.fail'>): void {
@@ -262,34 +280,4 @@ export function deriveAgentState(
     return 'idle'
   }
   return 'idle'
-}
-
-/** The most recent intent text, or null. */
-export function currentIntent(events: readonly TrellisEvent[]): EventOf<'intent.set'> | null {
-  let latest: EventOf<'intent.set'> | null = null
-  for (const e of events) {
-    if (e.kind === 'intent.set' && (!latest || e.ts >= latest.ts)) latest = e
-  }
-  return latest
-}
-
-export interface PredictionCheck {
-  /** Predicted and changed. */
-  hit: string[]
-  /** Changed without being predicted — worth a second look. */
-  unpredicted: string[]
-  /** Predicted but untouched. */
-  untouched: string[]
-}
-
-/** Compares the areas the human expected to change with what git saw change (F9). */
-export function comparePrediction(turn: TurnItem): PredictionCheck | null {
-  const predicted = turn.intent?.predictedAreas ?? []
-  if (predicted.length === 0 || !turn.changes) return null
-  const changed = [...new Set(turn.changes.map((c) => areaOf(c.path)))]
-  return {
-    hit: changed.filter((a) => predicted.includes(a)),
-    unpredicted: changed.filter((a) => !predicted.includes(a)),
-    untouched: predicted.filter((a) => !changed.includes(a)),
-  }
 }

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { ListChecks, Ruler, Scale, TriangleAlert, Undo2 } from 'lucide-react'
+import { ListChecks, Ruler, Scale, Shuffle, ShieldAlert, TriangleAlert, Undo2 } from 'lucide-react'
 import { violationText } from '@shared/rules'
-import { comparePrediction, type TurnItem } from '@shared/timeline'
+import type { TurnItem } from '@shared/timeline'
 import type { RulesCheck } from '@shared/types'
 import { Badge } from '../../components/ui'
 import { areaLabel } from '../../lib/area'
@@ -11,7 +11,12 @@ import { useStore } from '../../state/store'
 export function TurnInsights({ turn }: { turn: TurnItem }) {
   const { t } = useTranslation()
   const setRightTab = useStore((s) => s.setRightTab)
-  const prediction = comparePrediction(turn)
+  // Per turn, only what is new in the task: areas changed here first that nobody predicted.
+  const prediction = turn.prediction
+  const unexpected = prediction?.unexpected ?? []
+  const within = prediction?.withinPrediction === true
+  const offIntent = turn.analysis?.intentFit === 'no'
+  const mustNot = turn.analysis?.mustNotBroken ?? []
   const root = t('changes.rootArea')
   const violations = turn.rules?.newViolations.length ?? 0
   const checkFailed = turn.rules?.check ? !turn.rules.check.ok : false
@@ -36,7 +41,10 @@ export function TurnInsights({ turn }: { turn: TurnItem }) {
     !violations &&
     !checkFailed &&
     !analysisFailed &&
-    !prediction
+    unexpected.length === 0 &&
+    !within &&
+    !offIntent &&
+    mustNot.length === 0
   ) {
     return null
   }
@@ -78,6 +86,20 @@ export function TurnInsights({ turn }: { turn: TurnItem }) {
             </Badge>
           </button>
         )}
+        {offIntent && (
+          <Badge tone="warning">
+            <Shuffle size={10} className="mr-1" />
+            {t('timeline.offIntent')}
+          </Badge>
+        )}
+        {mustNot.length > 0 && (
+          <span title={mustNot.map((c) => `${c.rule} — ${c.why}`).join('\n')}>
+            <Badge tone="danger">
+              <ShieldAlert size={10} className="mr-1" />
+              {t('timeline.mustNot', { count: mustNot.length })}
+            </Badge>
+          </span>
+        )}
         {analysisFailed && (
           <span title={turn.analysis?.message ?? ''}>
             <Badge>
@@ -87,32 +109,20 @@ export function TurnInsights({ turn }: { turn: TurnItem }) {
           </span>
         )}
       </div>
-      {prediction && (
+      {(unexpected.length > 0 || within) && (
         <div
           className="rounded-md bg-surface-2 px-2 py-1.5 text-2xs leading-relaxed"
           data-testid="prediction"
         >
           <span className="font-medium text-fg-muted">{t('timeline.prediction')}</span>{' '}
-          {prediction.unpredicted.length === 0 && prediction.untouched.length === 0 ? (
-            <span className="text-success">{t('timeline.predictionMatched')}</span>
+          {unexpected.length > 0 ? (
+            <span className="text-warning" title={unexpected.join('\n')}>
+              {t('timeline.unpredicted', {
+                areas: unexpected.map((a) => areaLabel(a, root, true)).join(', '),
+              })}
+            </span>
           ) : (
-            <>
-              {prediction.unpredicted.length > 0 && (
-                <span className="text-warning" title={prediction.unpredicted.join('\n')}>
-                  {t('timeline.unpredicted', {
-                    areas: prediction.unpredicted.map((a) => areaLabel(a, root, true)).join(', '),
-                  })}
-                </span>
-              )}
-              {prediction.unpredicted.length > 0 && prediction.untouched.length > 0 && ' · '}
-              {prediction.untouched.length > 0 && (
-                <span className="text-fg-faint" title={prediction.untouched.join('\n')}>
-                  {t('timeline.untouched', {
-                    areas: prediction.untouched.map((a) => areaLabel(a, root, true)).join(', '),
-                  })}
-                </span>
-              )}
-            </>
+            <span className="text-success">{t('timeline.predictionMatched')}</span>
           )}
         </div>
       )}

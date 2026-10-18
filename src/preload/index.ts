@@ -55,7 +55,11 @@ const api: TrellisApi = {
     list: (id, limit) => invoke(Invoke.eventsList, id, limit),
     onEvent: (cb) => subscribe(Push.event, cb),
   },
-  intent: { save: (id, intent) => invoke(Invoke.intentSave, id, intent) },
+  intent: {
+    save: (id, intent) => invoke(Invoke.intentSave, id, intent),
+    done: (id, taskId, at) => invoke(Invoke.intentDone, id, taskId, at),
+    keep: (id, taskId) => invoke(Invoke.intentKeep, id, taskId),
+  },
   changes: {
     get: (id, baseline) => invoke(Invoke.changesGet, id, baseline),
     resetBaseline: (id) => invoke(Invoke.changesResetBaseline, id),

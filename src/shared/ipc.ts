@@ -45,6 +45,8 @@ export const Invoke = {
   terminalAttach: 'terminal:attach',
   eventsList: 'events:list',
   intentSave: 'intent:save',
+  intentDone: 'intent:done',
+  intentKeep: 'intent:keep',
   changesGet: 'changes:get',
   changesResetBaseline: 'changes:reset-baseline',
   gitInit: 'git:init',
@@ -150,7 +152,14 @@ export interface TrellisApi {
     list(projectId: string, limit?: number): Promise<TrellisEvent[]>
     onEvent(cb: (event: TrellisEvent) => void): Unsubscribe
   }
-  intent: { save(projectId: string, intent: IntentData): Promise<TrellisEvent> }
+  /** Tasks (ADR-0034): no taskId starts a new task; the same taskId refines (or reopens) it. */
+  intent: {
+    save(projectId: string, intent: IntentData): Promise<TrellisEvent>
+    /** Ends the task at `at` (default now): turns from then on no longer belong to it. */
+    done(projectId: string, taskId: string, at?: number): Promise<void>
+    /** "Still this task" when Trellis asked. */
+    keep(projectId: string, taskId: string): Promise<void>
+  }
   changes: {
     get(projectId: string, baseline: Baseline): Promise<ChangeReport>
     resetBaseline(projectId: string): Promise<void>

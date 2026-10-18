@@ -8,6 +8,30 @@ export interface IntentData {
   mustNot?: string
   /** Areas the human expects to change, checked against what actually changed (F9). */
   predictedAreas?: string[]
+  /** The task this intent belongs to (ADR-0034); a refinement keeps the id. Absent before 0.3. */
+  taskId?: string
+  /** A new task that also takes the turns since this time (when Trellis asked about them). */
+  from?: number
+}
+
+/** The human ended a task. `at` may be earlier than the event when Trellis asked about later turns. */
+export interface TaskDone {
+  taskId: string
+  at: number
+}
+
+/** The human said the work still belongs to this task when Trellis asked. */
+export interface TaskContinue {
+  taskId: string
+}
+
+/** Does the turn's request continue the task's intent? The analysis' guess (ADR-0034). */
+export type IntentFit = 'yes' | 'no' | 'unclear'
+
+/** A "must not" line the diff seems to break, as the analysis read it. */
+export interface MustNotConcern {
+  rule: string
+  why: string
 }
 
 export type DecisionKind =
@@ -74,6 +98,9 @@ export interface AnalysisRun {
   decisions: number
   behaviors: number
   message: string | null
+  /** Only when the turn had an intent; absent in runs recorded before ADR-0034. */
+  intentFit?: IntentFit | null
+  mustNotBroken?: MustNotConcern[]
 }
 
 export interface DecisionDoc {

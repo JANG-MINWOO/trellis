@@ -1,12 +1,16 @@
 // What Trellis asks the agent about a finished turn, and how the answer is cleaned up (M2 + M4).
 // Pure functions so the wording and the guard rails are testable.
 import { matchesAny } from '@shared/glob'
+import { invariantStatements } from '@shared/intent'
 import type {
   BehaviorCandidate,
   ChangeEntry,
   DecisionCandidate,
   DecisionKind,
+  IntentData,
+  IntentFit,
   Language,
+  MustNotConcern,
   Risk,
   SpecItem,
 } from '@shared/types'
@@ -14,7 +18,8 @@ import type {
 export interface TurnContext {
   projectName: string
   lang: Language
-  intent: string | null
+  /** The intent of the task the turn belongs to (ADR-0034), or null outside any task. */
+  intent: IntentData | null
   prompt: string
   lastMessage: string
   files: ChangeEntry[]
@@ -36,6 +41,8 @@ const KINDS: DecisionKind[] = [
 const RISKS: Risk[] = ['high', 'medium', 'low']
 const MAX_DECISIONS = 3
 const MAX_BEHAVIORS = 5
+const MAX_MUST_NOT = 3
+const FITS: IntentFit[] = ['yes', 'no', 'unclear']
 
 const text = { type: 'string' }
 export const ANALYSIS_SCHEMA = {
@@ -82,8 +89,17 @@ export const ANALYSIS_SCHEMA = {
         required: ['op', 'kind', 'area', 'targetId', 'statement', 'files'],
       },
     },
+    intentFit: { type: 'string', enum: FITS },
+    mustNotBroken: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { rule: text, why: text },
+        required: ['rule', 'why'],
+      },
+    },
   },
-  required: ['decisions', 'behaviors'],
+  required: ['decisions', 'behaviors', 'intentFit', 'mustNotBroken'],
 }
 
 const LANGUAGE_NAME: Record<Language, string> = { ko: 'Korean', en: 'English' }
@@ -96,7 +112,7 @@ export function buildTurnPrompt(ctx: TurnContext): string {
     `## ${title}\n${body.trim() || '(none)'}\n`
   return [
     'You review ONE finished turn of an AI coding agent for Trellis, a tool that keeps the intent of a',
-    'project understood by the humans who own it. Report only two things, and only when they are real.',
+    'project understood by the humans who own it. Report only what is asked, and only when it is real.',
     '',
     '1. DECISIONS: choices a teammate would want written down because they are hard to reverse or shape',
     '   future work: adding/removing a dependency; data, schema or storage format; auth, security or',
@@ -118,10 +134,18 @@ export function buildTurnPrompt(ctx: TurnContext): string {
     '   Use the language of the product, not of the code. Skip internal changes with no outside effect.',
     `   At most ${MAX_BEHAVIORS}. Returning none is fine.`,
     '',
+    '3. INTENT FIT: intentFit is "yes" when the request in this turn continues the work described in',
+    '   the human intent, "no" only when it is clearly a different piece of work, and "unclear"',
+    '   otherwise or when there is no intent.',
+    '',
+    '4. MUST-NOT: mustNotBroken lists "must not" lines of the human intent that the diff clearly',
+    `   breaks: rule (the line as written), why (one sentence). At most ${MAX_MUST_NOT}. Most turns`,
+    '   break none; leave it empty unless the diff shows it, and always empty without must-not lines.',
+    '',
     `Write every text field in ${LANGUAGE_NAME[ctx.lang]}. Only report what the diff shows.`,
     '',
     section('Project', ctx.projectName),
-    section('Human intent for this work', ctx.intent ?? ''),
+    section('Human intent for this work', intentText(ctx.intent)),
     section('Request in this turn', ctx.prompt),
     section("Agent's final message", ctx.lastMessage),
     section('Changed files', files.join('\n')),
@@ -132,6 +156,15 @@ export function buildTurnPrompt(ctx: TurnContext): string {
     section('Existing spec items', ctx.specItems.map((i) => `- [${i.id}] ${i.text}`).join('\n')),
     section('Diff (may be truncated)', ctx.patch),
   ].join('\n')
+}
+
+/** Goal and must-not lines as the human wrote them (the predicted areas are for the human). */
+function intentText(intent: IntentData | null): string {
+  if (!intent) return ''
+  const goal = intent.goal || (intent.mustNot ? '' : intent.text)
+  return [goal && `Goal: ${goal}`, intent.mustNot && `Must not:\n${intent.mustNot}`]
+    .filter(Boolean)
+    .join('\n')
 }
 
 const clip = (v: unknown, max: number): string =>
@@ -197,6 +230,24 @@ export function toCandidates(
     if (behaviors.length >= MAX_BEHAVIORS) break
   }
   return { decisions, behaviors }
+}
+
+/** The analysis' read of the turn against the task's intent; nothing without an intent. */
+export function toIntentNotes(
+  answer: unknown,
+  intent: IntentData | null,
+): { intentFit: IntentFit | null; mustNotBroken: MustNotConcern[] } {
+  if (!intent) return { intentFit: null, mustNotBroken: [] }
+  const a = obj(answer)
+  const lines = invariantStatements((intent.mustNot ?? '').split(/\r?\n/))
+  const mustNotBroken = list(a.mustNotBroken)
+    .map((raw) => ({ rule: clip(obj(raw).rule, 300), why: clip(obj(raw).why, 600) }))
+    .filter((c) => c.rule && lines.length > 0)
+    .slice(0, MAX_MUST_NOT)
+  return {
+    intentFit: FITS.includes(a.intentFit as IntentFit) ? (a.intentFit as IntentFit) : 'unclear',
+    mustNotBroken,
+  }
 }
 
 const RISK_TEXT: Record<

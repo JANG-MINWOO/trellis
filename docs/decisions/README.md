@@ -55,7 +55,7 @@
 | [0022](0022-composer-for-korean-ime.md) | Claude 탭 아래에 일반 입력창을 둔다 | 채택 |
 | [0023](0023-decision-candidates-from-turn-analysis.md) | 결정은 턴 분석으로 찾고, 이유는 사람이 쓴다 | 채택 |
 | [0024](0024-behavior-specs-format.md) | 동작 명세는 영역별 마크다운, 항목에 고정 번호 | 채택 |
-| [0025](0025-structured-intent-with-prediction.md) | 작업 의도는 목표·금지·예상 영역으로 나눠 적는다 | 채택 |
+| [0025](0025-structured-intent-with-prediction.md) | 작업 의도는 목표·금지·예상 영역으로 나눠 적는다 | 채택 (턴 단위 비교는 0034로 대체) |
 | [0026](0026-structure-rules-in-target-repo.md) | 구조 규칙은 대상 저장소의 `.trellis/`에 두고, 엔진은 git 트리를 읽는다 | 채택 |
 | [0027](0027-guard-via-stop-hook-block.md) | 작업 끝 검사는 Stop 훅에 block으로 답해 되돌려 보낸다 | 채택 |
 | [0028](0028-health-snapshots-and-doc-drift.md) | 건강 추세는 하루 한 번 스냅샷, 문서 어긋남은 "살아 있는 문서"만 본다 | 채택 |
@@ -64,3 +64,4 @@
 | [0031](0031-main-process-error-log.md) | 메인 프로세스 오류는 데이터 폴더의 로그 파일에 남긴다 | 채택 |
 | [0032](0032-renderer-store-slices.md) | renderer 상태는 store 하나를 slice 파일로 나눠 둔다 | 채택 |
 | [0033](0033-file-tree-marks-since-head.md) | 파일 트리의 변경 표시는 항상 마지막 커밋 기준으로 한다 | 채택 |
+| [0034](0034-intent-as-tasks.md) | 작업 의도는 작업 단위로 시작하고 마무리한다 | 채택 |

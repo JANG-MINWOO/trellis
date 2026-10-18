@@ -3,6 +3,7 @@
 import { pendingDecisions } from '@shared/decisions'
 import { matchesAny } from '@shared/glob'
 import { recordLanguageOf } from '@shared/settings'
+import { intentForPrompt } from '@shared/tasks'
 import type { EventOf, Language, Project, Settings, TrellisEvent } from '@shared/types'
 import { newId } from '../../lib/ids'
 import { KeyedSerialQueue } from '../../lib/serial'
@@ -13,7 +14,13 @@ import { listDecisionDocs } from '../decisions'
 import { trellisEvent, type EventStore } from '../events'
 import { listSpecs } from '../specs'
 import { runHeadless } from './headless'
-import { ANALYSIS_SCHEMA, buildTurnPrompt, riskAreaCandidates, toCandidates } from './turn-prompt'
+import {
+  ANALYSIS_SCHEMA,
+  buildTurnPrompt,
+  riskAreaCandidates,
+  toCandidates,
+  toIntentNotes,
+} from './turn-prompt'
 
 const TIMEOUT_MS = 180_000
 
@@ -88,7 +95,7 @@ export class TurnAnalyzer {
         const ctx = {
           projectName: project.name,
           lang,
-          intent: intentBefore(events, turn.promptId),
+          intent: intentForPrompt(events, turn.promptId),
           prompt: textOf(events, 'prompt.submit', turn.promptId),
           lastMessage: textOf(events, 'turn.stop', turn.promptId),
           files: changes.files,
@@ -117,6 +124,7 @@ export class TurnAnalyzer {
           decisions: decisions.length,
           behaviors: behaviors.length,
           message: null,
+          ...toIntentNotes(parsed.data, ctx.intent),
         })
       } catch (error) {
         await this.record(project, turn, 'analysis.run', {
@@ -172,13 +180,4 @@ function textOf(
     if (kind === 'turn.stop' && e.kind === 'turn.stop') return e.data.lastMessage
   }
   return ''
-}
-
-/** The intent the human wrote last before this turn's prompt. */
-function intentBefore(events: readonly TrellisEvent[], promptId: string): string | null {
-  const prompt = events.find((e) => e.kind === 'prompt.submit' && e.promptId === promptId)
-  const before = prompt?.ts ?? Infinity
-  let latest: string | null = null
-  for (const e of events) if (e.kind === 'intent.set' && e.ts <= before) latest = e.data.text
-  return latest
 }

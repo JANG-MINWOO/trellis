@@ -6,11 +6,14 @@ import {
   type AgentState,
   type TimelineItem,
 } from '@shared/timeline'
+import { deriveTasks, type Task } from '@shared/tasks'
 import type { TerminalInfo, TrellisEvent } from '@shared/types'
 import { useStore } from './store'
 
 const EMPTY: TimelineItem[] = []
+const NO_EVENTS: TrellisEvent[] = []
 const cache = new WeakMap<TrellisEvent[], TimelineItem[]>()
+const taskCache = new WeakMap<TrellisEvent[], Task[]>()
 
 export function timelineOf(events: TrellisEvent[] | undefined): TimelineItem[] {
   if (!events) return EMPTY
@@ -25,6 +28,17 @@ export function timelineOf(events: TrellisEvent[] | undefined): TimelineItem[] {
 export function useTimeline(projectId: string | null): TimelineItem[] {
   const events = useStore((s) => (projectId ? s.events[projectId] : undefined))
   return timelineOf(events)
+}
+
+/** Tasks of the project (ADR-0034), oldest first. */
+export function useTasks(projectId: string | null): Task[] {
+  const events = useStore((s) => (projectId ? s.events[projectId] : undefined)) ?? NO_EVENTS
+  let tasks = taskCache.get(events)
+  if (!tasks) {
+    tasks = deriveTasks(events)
+    taskCache.set(events, tasks)
+  }
+  return tasks
 }
 
 export type ClaudeState = AgentState | 'off'

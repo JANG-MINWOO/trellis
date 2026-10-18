@@ -20,6 +20,11 @@ if (args.includes('-p')) {
   process.stdin.on('data', (c) => (input += c))
   process.stdin.on('end', () => {
     const touched = input.includes('notes.md')
+    // Sections look like "## Title\nbody"; an empty one reads "(none)".
+    const section = (title) => (input.split(`## ${title}\n`)[1] ?? '').split('\n## ')[0].trim()
+    const request = section('Request in this turn')
+    const intent = section('Human intent for this work')
+    const hasIntent = intent !== '' && intent !== '(none)'
     const output = {
       decisions:
         isolated && touched
@@ -48,6 +53,12 @@ if (args.includes('-p')) {
             },
           ]
         : [],
+      // "OTHER" in the request reads as different work; "BREAK" as breaking a must-not line.
+      intentFit: !hasIntent ? 'unclear' : request.includes('OTHER') ? 'no' : 'yes',
+      mustNotBroken:
+        hasIntent && request.includes('BREAK') && intent.includes('Must not:')
+          ? [{ rule: intent.split('Must not:\n')[1].split('\n')[0], why: 'The turn touched it.' }]
+          : [],
     }
     process.stdout.write(
       JSON.stringify({

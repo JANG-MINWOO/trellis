@@ -134,7 +134,33 @@
     "predicted": "바뀔 것 같은 곳",
     "predictedHint": "고르면 작업이 끝난 뒤 실제로 바뀐 곳과 비교해 보여줘요.",
     "toInvariants": "불변식으로",
-    "invariantsSent": "{{count}}개를 동작 탭에 올렸어요. 확인하고 반영해 주세요."
+    "invariantsSent": "{{count}}개를 동작 탭에 올렸어요. 확인하고 반영해 주세요.",
+    "inProgress": "진행 중",
+    "finished": "마무리함",
+    "turns_other": "턴 {{count}}개",
+    "refine": "다듬기",
+    "finish": "마무리",
+    "reopen": "다시 열기",
+    "writeNext": "새 작업 적기",
+    "refineHint": "같은 작업의 의도를 고쳐요. 다른 작업이면 이 작업을 마무리하고 새로 적어 주세요.",
+    "fromHint": "{{time}}부터의 턴이 이 작업에 들어가요.",
+    "changed": "바뀐 곳",
+    "unexpected": "예상 밖",
+    "untouched": "그대로인 곳",
+    "matched": "예상한 곳 안에서 끝났어요",
+    "pendingDecisions_other": "기록할 결정 {{count}}",
+    "pendingBehaviors_other": "확인할 동작 {{count}}",
+    "mustNotConcerns": "하면 안 되는 것을 건드렸을 수 있어요 (AI 추정)",
+    "check": {
+      "newConversation": "새 대화가 시작됐어요.",
+      "idle": "한동안 쉬었다가 다시 왔어요 (마지막 활동 {{ago}}).",
+      "offIntent": "의도와 다른 요청 같아요 (AI 추정): {{prompt}}",
+      "offPrediction": "예상한 곳은 그대로 두고 다른 곳만 바꾼 턴이 있어요: {{prompt}}",
+      "question": "이 작업을 이어서 하나요?",
+      "keep": "이어서",
+      "finish": "마무리",
+      "newTask": "새 작업"
+    }
   },
   "inspector": {
     "noProject": "프로젝트를 열면 의도, 타임라인, 변경, 결정, 구조 건강이 여기에 보여요."
@@ -152,7 +178,9 @@
     "files_other": "파일 {{count}}개",
     "commands_other": "명령 {{count}}개",
     "failures_other": "실패 {{count}}건",
-    "intentSet": "의도를 적었어요",
+    "taskStart": "새 작업",
+    "intentRevised": "의도를 다듬었어요",
+    "taskEnd": "작업 마무리",
     "sessionStart": "새 대화 시작",
     "sessionResume": "지난 대화 이어서",
     "sessionClear": "대화 비움 (/clear)",
@@ -166,10 +194,11 @@
     "checkFailed": "검사 실패",
     "analysisFailed": "분석 실패",
     "prediction": "예측:",
-    "predictionMatched": "예상한 곳만 바뀌었어요",
+    "predictionMatched": "예상한 곳 안에서 바뀌었어요",
     "unpredicted": "예상 밖 변경 {{areas}}",
-    "untouched": "그대로인 곳 {{areas}}",
-    "sentBack_other": "되돌려 보냄 {{count}}회"
+    "sentBack_other": "되돌려 보냄 {{count}}회",
+    "offIntent": "의도와 다른 요청 같아요 (AI 추정)",
+    "mustNot_other": "하면 안 되는 것 확인 {{count}}"
   },
   "changes": {
     "title": "변경",

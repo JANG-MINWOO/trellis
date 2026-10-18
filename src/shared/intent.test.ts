@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { invariantStatements, normalizeIntentInput } from './intent'
+import { invariantStatements, normalizeIntentInput, normalizeTaskDone } from './intent'
 
 describe('normalizeIntentInput', () => {
   it('builds the text from goal and must-not when none is given', () => {
@@ -26,6 +26,26 @@ describe('normalizeIntentInput', () => {
       mustNot: '',
       predictedAreas: [],
     })
+  })
+})
+
+describe('task fields', () => {
+  it('keeps an id-like task id and a past start time, drops the rest', () => {
+    expect(normalizeIntentInput({ goal: 'g', taskId: 'abc-123', from: 50 }, 100)).toMatchObject({
+      taskId: 'abc-123',
+      from: 50,
+    })
+    const bad = normalizeIntentInput({ goal: 'g', taskId: '../x', from: 'soon' }, 100)
+    expect(bad.taskId).toBeUndefined()
+    expect(bad.from).toBeUndefined()
+    expect(normalizeIntentInput({ goal: 'g', from: 500 }, 100).from).toBe(100)
+  })
+
+  it('ends a task now unless an earlier moment is given', () => {
+    expect(normalizeTaskDone('t1', undefined, 100)).toEqual({ taskId: 't1', at: 100 })
+    expect(normalizeTaskDone('t1', 40, 100)).toEqual({ taskId: 't1', at: 40 })
+    expect(normalizeTaskDone('t1', 400, 100)).toEqual({ taskId: 't1', at: 100 })
+    expect(normalizeTaskDone(7, 40, 100)).toBeNull()
   })
 })
 

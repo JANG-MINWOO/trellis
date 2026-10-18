@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChangeEntry } from '@shared/types'
-import { buildTurnPrompt, riskAreaCandidates, toCandidates } from './turn-prompt'
+import { buildTurnPrompt, riskAreaCandidates, toCandidates, toIntentNotes } from './turn-prompt'
 
 const file = (path: string): ChangeEntry => ({
   path,
@@ -18,7 +18,12 @@ describe('buildTurnPrompt', () => {
     const prompt = buildTurnPrompt({
       projectName: 'shop',
       lang: 'ko',
-      intent: '하면 안 되는 것: 결제 금액 계산 변경',
+      intent: {
+        text: '하려는 것: 로그인 잠금\n하면 안 되는 것: 결제 금액 계산 변경',
+        goal: '로그인 잠금',
+        mustNot: '결제 금액 계산 변경',
+        predictedAreas: ['src/auth'],
+      },
       prompt: '로그인 잠금 추가',
       lastMessage: 'done',
       files: [file('src/auth/lock.ts')],
@@ -29,8 +34,47 @@ describe('buildTurnPrompt', () => {
     expect(prompt).toContain('Write every text field in Korean')
     expect(prompt).toContain('M src/auth/lock.ts (+3 −1)')
     expect(prompt).toContain('- [B-001] WHEN x')
-    expect(prompt).toContain('결제 금액 계산 변경')
+    expect(prompt).toContain('Goal: 로그인 잠금')
+    expect(prompt).toContain('Must not:\n결제 금액 계산 변경')
+    expect(prompt).not.toContain('src/auth\n')
     expect(prompt).toContain('NOT decisions')
+    expect(prompt).toContain('INTENT FIT')
+  })
+})
+
+describe('toIntentNotes', () => {
+  const intent = { text: 't', goal: 'g', mustNot: '- keep tokens\n- no data loss' }
+
+  it('reads the fit and caps the must-not concerns', () => {
+    const out = toIntentNotes(
+      {
+        intentFit: 'no',
+        mustNotBroken: [
+          { rule: 'keep tokens', why: 'format changed' },
+          { rule: '', why: 'empty rule' },
+          { rule: 'a', why: '' },
+          { rule: 'b', why: '' },
+          { rule: 'c', why: '' },
+        ],
+      },
+      intent,
+    )
+    expect(out.intentFit).toBe('no')
+    expect(out.mustNotBroken).toEqual([
+      { rule: 'keep tokens', why: 'format changed' },
+      { rule: 'a', why: '' },
+      { rule: 'b', why: '' },
+    ])
+  })
+
+  it('says nothing without an intent and nothing about must-nots the intent does not have', () => {
+    expect(toIntentNotes({ intentFit: 'no' }, null)).toEqual({ intentFit: null, mustNotBroken: [] })
+    expect(
+      toIntentNotes(
+        { intentFit: 'maybe', mustNotBroken: [{ rule: 'x', why: 'y' }] },
+        { text: 't' },
+      ),
+    ).toEqual({ intentFit: 'unclear', mustNotBroken: [] })
   })
 })
 

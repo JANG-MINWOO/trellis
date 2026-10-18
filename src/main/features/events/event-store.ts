@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import path from 'node:path'
 import { openCandidate } from '@shared/decisions'
 import { EVENT_WINDOW } from '@shared/defaults'
+import { isPinnedLine } from '@shared/event-window'
 import type { EventOf, TrellisEvent } from '@shared/types'
 import { appendJsonl, readJsonlTail } from '../../lib/jsonl'
 import { KeyedSerialQueue } from '../../lib/serial'
@@ -23,9 +24,10 @@ export class EventStore extends EventEmitter<{ event: [TrellisEvent] }> {
     this.emit('event', event)
   }
 
+  /** The last `limit` events, plus older intent events (tasks can outlive the window). */
   list(projectId: string, limit = EVENT_WINDOW): Promise<TrellisEvent[]> {
     return this.queue.run(projectId, () =>
-      readJsonlTail<TrellisEvent>(this.fileFor(projectId), limit),
+      readJsonlTail<TrellisEvent>(this.fileFor(projectId), limit, isPinnedLine),
     )
   }
 

@@ -1,6 +1,8 @@
-// The intent layer end to end (M2, M4): intent with a prediction → a turn → the analysis finds a
-// decision and a behavior change → the human records the decision and applies the behavior →
-// files appear in the project; "must not" lines become invariants.
+// The intent layer end to end (M2, M4, ADR-0034): intent with a prediction → a turn → the analysis
+// finds a decision and a behavior change → the human records the decision and applies the behavior
+// → files appear in the project; "must not" lines become invariants. Then the task goes on for
+// another turn, the work moves to something else (Trellis asks, the human starts a new task), and
+// the new task is finished and reopened.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
@@ -27,24 +29,27 @@ test('intent → turn analysis → decision record and behavior spec', async () 
     await win.getByTestId('composer-input').fill('write notes')
     await win.getByTestId('composer-input').press('Enter')
 
-    // The turn shows the prediction check and what the analysis found.
+    // The turn shows what nobody predicted and what the analysis found; the intent card follows
+    // the task: the root was predicted and changed, src/feature was not predicted.
     const turn = win.getByTestId('turn-card').first()
     await expect(turn.getByTestId('prediction')).toContainText('src/feature', { timeout: 20_000 })
-    await expect(turn.getByTestId('prediction')).toContainText('docs')
     await expect(turn.getByTestId('turn-insights')).toContainText(/결정 1|1 decision/, {
       timeout: 20_000,
     })
+    const card = win.getByTestId('intent-card')
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 1개|1 turn/)
+    await expect(card.getByTestId('task-unexpected')).toContainText('src/feature')
     await shot(win, '12-turn-insights')
 
     // Decision: the human writes the reason; the record lands in docs/decisions.
     await win.getByRole('tab', { name: /결정|Decisions/ }).click()
-    const card = win.getByTestId('decision-card')
-    await expect(card).toContainText('Keep notes in a plain markdown file')
+    const decision = win.getByTestId('decision-card')
+    await expect(decision).toContainText('Keep notes in a plain markdown file')
     await expect(win.getByTestId('decision-accept')).toBeDisabled()
     await win.getByTestId('decision-reason').fill('누구나 편집기 없이 바로 읽을 수 있게')
     await shot(win, '13-decision-card')
     await win.getByTestId('decision-accept').click()
-    await expect(card).toHaveCount(0)
+    await expect(decision).toHaveCount(0)
     const record = path.join(
       project,
       'docs',
@@ -79,6 +84,43 @@ test('intent → turn analysis → decision record and behavior spec', async () 
     expect(specFiles.filter((f) => f !== 'notes.md')).toEqual([
       expect.stringMatching(/^(공통|general)\.md$/),
     ])
+
+    // Second turn of the same task: same areas, so nothing new is unexpected on the turn. The
+    // analysis reads it as breaking the must-not line, which shows on the turn and the task.
+    await win.getByRole('tab', { name: /타임라인|Timeline/ }).click()
+    await win.getByTestId('composer-input').fill('write more notes BREAK')
+    await win.getByTestId('composer-input').press('Enter')
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 2개|2 turns/)
+    await expect(card.getByTestId('task-mustnot')).toBeVisible({ timeout: 20_000 })
+    const second = win.getByTestId('turn-card').first()
+    await expect(second.getByTestId('turn-insights')).toBeVisible()
+    await expect(second.getByTestId('prediction')).toHaveCount(0)
+    await expect(card.getByTestId('task-check')).toHaveCount(0)
+
+    // Different work in the same conversation: the analysis says so, Trellis asks, and the human
+    // starts a new task that takes in that turn.
+    await win.getByTestId('composer-input').fill('OTHER rename the logo')
+    await win.getByTestId('composer-input').press('Enter')
+    const check = card.getByTestId('task-check')
+    await expect(check).toHaveAttribute('data-reason', 'off-intent', { timeout: 20_000 })
+    await expect(check).toContainText('OTHER rename the logo')
+    await shot(win, '15-task-check')
+    await check.getByTestId('task-check-new').click()
+    await win.getByTestId('intent-goal').fill('로고 파일 이름을 바꾼다')
+    await win.getByTestId('intent-save').click()
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 1개|1 turn/)
+    await expect(card.getByTestId('task-check')).toHaveCount(0)
+    await expect(win.getByTestId('timeline-task-end')).toHaveCount(1)
+    await expect(win.getByTestId('timeline-intent')).toHaveCount(2)
+
+    // Finishing ends the task: the card sums it up and turns get no intent until the next one.
+    await card.getByTestId('intent-finish').click()
+    await expect(card.getByTestId('intent-status')).toContainText(/마무리함|Finished/)
+    await expect(win.getByTestId('timeline-task-end')).toHaveCount(2)
+    await shot(win, '16-task-finished')
+    await card.getByTestId('intent-reopen').click()
+    await expect(card.getByTestId('intent-status')).toContainText(/진행 중|In progress/)
+    await expect(win.getByTestId('timeline-task-end')).toHaveCount(1)
   } finally {
     await app.close()
   }

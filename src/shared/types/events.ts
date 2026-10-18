@@ -7,6 +7,8 @@ import type {
   DecisionCandidate,
   DecisionResolution,
   IntentData,
+  TaskContinue,
+  TaskDone,
 } from './intent'
 import type { AgentId } from './settings'
 
@@ -22,6 +24,8 @@ export type EventKind =
   | 'turn.changes'
   | 'notification'
   | 'intent.set'
+  | 'intent.done'
+  | 'intent.continue'
   | 'decision.candidate'
   | 'decision.resolved'
   | 'behavior.candidate'
@@ -64,6 +68,8 @@ export type TrellisEvent =
       data: { type: string; message: string; needsInput?: boolean }
     })
   | (EventBase & { kind: 'intent.set'; data: IntentData })
+  | (EventBase & { kind: 'intent.done'; data: TaskDone })
+  | (EventBase & { kind: 'intent.continue'; data: TaskContinue })
   | (EventBase & { kind: 'decision.candidate'; data: DecisionCandidate })
   | (EventBase & { kind: 'decision.resolved'; data: DecisionResolution })
   | (EventBase & { kind: 'behavior.candidate'; data: BehaviorCandidate })

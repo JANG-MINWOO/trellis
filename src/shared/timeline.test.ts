@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildTimeline,
-  comparePrediction,
-  currentIntent,
-  deriveAgentState,
-  turnFiles,
-  type TurnItem,
-} from './timeline'
+import { buildTimeline, deriveAgentState, turnFiles, type TurnItem } from './timeline'
 import type { TrellisEvent } from './types'
 
 let seq = 0
@@ -222,11 +215,46 @@ describe('buildTimeline', () => {
     const turn = items.find((i) => i.type === 'turn') as TurnItem
     expect(turn.decisions.map((d) => d.title)).toEqual(['Lock accounts'])
     expect(turn.analysis?.status).toBe('ok')
-    expect(comparePrediction(turn)).toEqual({
-      hit: ['src/auth'],
-      unpredicted: ['src/db'],
-      untouched: ['docs'],
+    // An intent without a task id (written before tasks) is its own task.
+    const start = items.find((i) => i.type === 'intent')
+    expect(turn.taskId).toBe(start?.taskId)
+    expect(turn.taskId).toBeTruthy()
+    expect(turn.prediction).toEqual({
+      unexpected: ['src/db'],
+      withinPrediction: false,
+      missedAll: false,
     })
+  })
+
+  it('places task markers in time: the end of one task before the start of the next', () => {
+    const items = buildTimeline([
+      ev({
+        kind: 'intent.set',
+        ts: 1,
+        sessionId: null,
+        promptId: null,
+        data: { text: 'a', taskId: 'A' },
+      }),
+      ev({ kind: 'prompt.submit', ts: 2, sessionId: 's', promptId: 'p1', data: { prompt: 'x' } }),
+      ev({ kind: 'prompt.submit', ts: 5, sessionId: 's', promptId: 'p2', data: { prompt: 'y' } }),
+      ev({
+        kind: 'intent.done',
+        ts: 8,
+        sessionId: null,
+        promptId: null,
+        data: { taskId: 'A', at: 5 },
+      }),
+      ev({
+        kind: 'intent.set',
+        ts: 9,
+        sessionId: null,
+        promptId: null,
+        data: { text: 'b', taskId: 'B', from: 5 },
+      }),
+    ])
+    expect(items.map((i) => (i.type === 'turn' ? `turn:${i.prompt}:${i.taskId}` : i.type))).toEqual(
+      ['intent', 'turn:x:A', 'task-end', 'intent', 'turn:y:B'],
+    )
   })
 
   it('sorts events by time before building', () => {
@@ -249,15 +277,5 @@ describe('deriveAgentState', () => {
     expect(deriveAgentState(items, 'a')).toBe('working')
     expect(deriveAgentState(items, 'b')).toBe('idle')
     expect(deriveAgentState([], null)).toBe('idle')
-  })
-})
-
-describe('currentIntent', () => {
-  it('returns the latest intent', () => {
-    const intent = currentIntent([
-      ev({ kind: 'intent.set', ts: 1, sessionId: null, promptId: null, data: { text: 'old' } }),
-      ev({ kind: 'intent.set', ts: 5, sessionId: null, promptId: null, data: { text: 'new' } }),
-    ])
-    expect(intent?.data.text).toBe('new')
   })
 })
