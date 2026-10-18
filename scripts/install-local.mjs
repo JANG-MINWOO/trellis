@@ -26,6 +26,31 @@ const running = () =>
     .split('\n')
     .some((line) => line.trim().endsWith('/Trellis.app/Contents/MacOS/Trellis'))
 
+/**
+ * Helpers still waiting from an earlier run would swap their older build in too when Trellis quits,
+ * racing this one. Stop them and drop their builds: the newest run wins.
+ */
+function cancelEarlierSwaps() {
+  const lines = (spawnSync('ps', ['-axo', 'pid=,args='], { encoding: 'utf8' }).stdout ?? '').split(
+    '\n',
+  )
+  for (const line of lines) {
+    const match = line.trim().match(/^(\d+)\s+(.*)$/)
+    if (!match || Number(match[1]) === process.pid) continue
+    const args = match[2].split(' ')
+    const at = args.indexOf('--swap-when-quit')
+    if (at < 0 || !args[at - 1]?.endsWith('install-local.mjs')) continue
+    try {
+      process.kill(Number(match[1]))
+    } catch {
+      continue
+    }
+    const outDir = args[at + 2]
+    if (outDir?.startsWith(os.tmpdir())) rmSync(outDir, { recursive: true, force: true })
+    console.log(`Cancelled an earlier pending swap (pid ${match[1]}).`)
+  }
+}
+
 function swap(src, outDir) {
   // Copy next to the old app first: if the copy fails, the installed app is still there.
   const staged = `${DEST}.installing`
@@ -70,6 +95,7 @@ if (process.argv[2] === '--swap-when-quit') {
     process.exit(1)
   }
   if (running()) {
+    cancelEarlierSwaps()
     spawn(process.execPath, [fileURLToPath(import.meta.url), '--swap-when-quit', src, outDir], {
       detached: true,
       stdio: 'ignore',
