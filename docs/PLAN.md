@@ -4,7 +4,7 @@
 > 범위·순서·완료 기준을 바꾸려면 먼저 이 문서를 고치고(미누와 합의), 그다음에 코드를 고친다.
 > 왜 이렇게 정했는지는 `docs/BACKGROUND.md`, 개별 결정은 `docs/decisions/`, 진행 기록은 `docs/worklog/`에 있다.
 
-- 최종 갱신: 2026-10-16 (0.2.0 고정 점검)
+- 최종 갱신: 2026-10-18 (파일 트리 변경 표시 기준, ADR-0033)
 - 현재 단계: **0.2.0 고정.** M1~M4의 구현은 끝났다(0.2.0). 남은 것은 실사용으로 확인하는 완료 기준(M1의 1·2·3b·4, M2~M4)과 M5다. 버전 태그는 아직 없다. (§8 체크리스트가 진행 상황의 원본)
 
 ---
@@ -65,7 +65,7 @@
 | 이벤트 (TrellisEvent) | 에이전트 무관 정규화 이벤트. 에이전트가 보낸 것: session.end / prompt.submit / tool.use / tool.fail / turn.stop / notification. Trellis가 남기는 것: session.start / turn.changes / intent.set / decision.candidate·resolved / behavior.candidate·resolved / analysis.run / rules.check / health.snapshot. 파일 편집·명령은 tool.use 안의 필드다 |
 | 턴 (TurnItem) | 프롬프트 하나 → 도구 사용들 → 종료까지. 이벤트에서 **계산**한다(저장하지 않음, `shared/timeline.ts`) |
 | 의도 (IntentData) | 사람이 쓴 "이번 작업에서 하려는 것 / 하면 안 되는 것 / 바뀔 것 같은 곳" (ADR-0025) |
-| 변경 묶음 (ChangeReport, ChangeGroup) | 기준점(세션 시작 또는 HEAD) 대비 파일 변경을 영역(기능·폴더)별로 묶은 것. git에서 **계산** |
+| 변경 묶음 (ChangeReport, ChangeGroup) | 기준점(세션 시작 또는 HEAD) 대비 파일 변경을 영역(기능·폴더)별로 묶은 것. git에서 **계산**. 파일 트리 표시용으로 HEAD 대비 경로·상태(`sinceHead`)도 같이 담는다 (ADR-0033) |
 | 결정 (DecisionCandidate, DecisionDoc) | 무엇을 / 왜 / 대안 / 결과와 대가. 3층 중 "결정과 결과" 층. 후보는 원장에, 승인한 것은 결정 기록 파일로 |
 | 스펙 (SpecArea, SpecItem) | 동작 층의 표기: 영역별 마크다운에 동작(EARS)과 불변식, 고정 번호 B-/I- (ADR-0024) |
 | 규칙 (Violation, `.trellis/rules.json`) | 기계가 검사하는 구조 규칙(경계·크기·폴더 밀집·중복·순환). 기준선(래칫, `.trellis/baseline.json`)을 가진다 |
@@ -95,7 +95,7 @@ v1 = 아래 기능 전체. **비개발자 보기 UI만 제외.**
 | F2 | 내장 터미널 (Claude 탭: claude 자동 실행·이어서/새로·재시작 / 셸 탭 / 프로젝트 전환해도 세션 유지) | M1 |
 | F3 | 이벤트 브리지 + 타임라인 (턴 카드, 승인 대기 표시) | M1 |
 | F4 | 작업 의도 (작성·저장·Claude 입력창으로 붙여넣기·타임라인 표시) | M1 기본 → M4 확장 |
-| F5 | 변경 묶음 (영역별 묶음, 세션 기준/HEAD 기준, +/− 줄 수, 편집기로 열기) | M1 |
+| F5 | 변경 묶음 (영역별 묶음, 세션 기준/HEAD 기준, +/− 줄 수, 편집기로 열기, 파일 트리 표시는 HEAD 기준) | M1 |
 | F6 | 새 결정 감지 → 사람 답변 → 결정 기록 | M2 |
 | F7 | 구조 규칙 + 건강 패널 + 시작 템플릿 + 기준선(래칫) | M1 기본 지표 → M3 |
 | F8 | 의도 레이어 스펙 + 동작 diff + 문서-코드 어긋남 감지 | M4 |
@@ -204,6 +204,7 @@ v1 이후: 비개발자 보기 UI, 다른 에이전트 어댑터(Codex 등), 팀
 - [x] CI: intent·guard e2e도 돌리기
 - [x] 테스트: 단위·통합 120개, e2e는 smoke·intent·guard(가짜 claude, CI에서도) + 직접 켜는 real-claude·browse
 - [x] 안정 빌드 교체(`install:local`), 설치된 빌드 표시가 HEAD와 맞는지 확인
+- [x] 써 보고 나온 것(2026-10-18, 미누 승인): 왼쪽 파일 트리의 변경 표시를 변경 탭 기준과 떼어 항상 마지막 커밋 기준으로. 커밋하면 표시가 사라진다 (ADR-0033)
 - [ ] 버전 태그 `v0.2.0` — 태그를 달면 Releases에 dmg·exe가 공개되므로 미누 확인 후
 
 ### M5 — v1 마감

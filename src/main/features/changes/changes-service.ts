@@ -72,7 +72,10 @@ export class ChangesService {
         const info = await this.repoInfo(root)
         if (!info) return { kind: 'not-repo' }
         const current = await this.snapshotTree(info)
-        let base: string | null = null
+        const headTree =
+          (await git.tryRun(info.top, ['rev-parse', '--verify', '-q', 'HEAD^{tree}']))?.trim() ||
+          EMPTY_TREE
+        let base = headTree
         let takenAt: number | null = null
         let fallback = false
         if (baseline === 'session') {
@@ -88,11 +91,10 @@ export class ChangesService {
             fallback = true
           }
         }
-        base ??=
-          (await git.tryRun(info.top, ['rev-parse', '--verify', '-q', 'HEAD^{tree}']))?.trim() ||
-          EMPTY_TREE
-
         const entries = await this.diffTrees(info, base, current)
+        // The file tree always marks uncommitted changes, whatever the panel compares against.
+        const sinceHead =
+          base === headTree ? entries : await this.diffTrees(info, headTree, current, false)
         const branch =
           (await git.tryRun(info.top, ['symbolic-ref', '--short', '-q', 'HEAD']))?.trim() ||
           (await git.tryRun(info.top, ['rev-parse', '--short', 'HEAD']))?.trim() ||
@@ -104,6 +106,7 @@ export class ChangesService {
           baselineTakenAt: takenAt,
           branch,
           groups: groupByArea(entries),
+          sinceHead: sinceHead.map(({ path, status }) => ({ path, status })),
           totals: {
             files: entries.length,
             additions: entries.reduce((n, e) => n + e.additions, 0),
@@ -179,7 +182,12 @@ export class ChangesService {
     return git && info ? turnPatch(git, info, startTree, endTree, files, firstPaths) : ''
   }
 
-  private async diffTrees(info: RepoInfo, base: string, current: string): Promise<ChangeEntry[]> {
+  private async diffTrees(
+    info: RepoInfo,
+    base: string,
+    current: string,
+    withStats = true,
+  ): Promise<ChangeEntry[]> {
     const git = (await this.git())!
     const pathspec = info.prefix ? ['--', info.prefix] : []
     const args = (format: string): string[] => [
@@ -194,7 +202,7 @@ export class ChangesService {
     ]
     const [nameStatus, numstat] = await Promise.all([
       git.run(info.top, args('--name-status')),
-      git.run(info.top, args('--numstat')),
+      withStats ? git.run(info.top, args('--numstat')) : '',
     ])
     return combineChanges(nameStatus, numstat, info.prefix)
   }

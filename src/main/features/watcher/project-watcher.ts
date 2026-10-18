@@ -2,10 +2,17 @@ import { EventEmitter } from 'node:events'
 import { type FSWatcher, watch } from 'node:fs'
 
 const DEBOUNCE_MS = 600
-// Ignore dependency folders; inside .git only HEAD/index matter (commits, checkouts, staging).
+// Ignore dependency folders. Inside .git only what moves HEAD or the index matters: commits,
+// checkouts, staging, and branch moves that leave the index alone (`git reset --soft`).
 const IGNORED = /(^|[\\/])node_modules([\\/]|$)/
 const GIT_DIR = /(^|[\\/])\.git([\\/]|$)/
-const GIT_INTERESTING = /(^|[\\/])\.git[\\/](HEAD|index)$/
+const GIT_INTERESTING = /(^|[\\/])\.git[\\/](HEAD|index|packed-refs|refs[\\/]heads[\\/].+)$/
+
+/** Whether a change to `filename` (relative to the project) can change files or HEAD. */
+export function isRelevantChange(filename: string): boolean {
+  if (IGNORED.test(filename)) return false
+  return !GIT_DIR.test(filename) || GIT_INTERESTING.test(filename)
+}
 
 /** Watches the active project recursively and reports "something changed" (debounced). */
 export class ProjectWatcher extends EventEmitter<{ changed: [string] }> {
@@ -29,8 +36,7 @@ export class ProjectWatcher extends EventEmitter<{ changed: [string] }> {
   }
 
   private onChange(filename: string): void {
-    if (IGNORED.test(filename)) return
-    if (GIT_DIR.test(filename) && !GIT_INTERESTING.test(filename)) return
+    if (!isRelevantChange(filename)) return
     if (this.timer) clearTimeout(this.timer)
     const id = this.projectId
     this.timer = setTimeout(() => {

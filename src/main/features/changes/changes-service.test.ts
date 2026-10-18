@@ -75,6 +75,27 @@ describe('ChangesService', () => {
     ).toBe('')
   })
 
+  it('marks files changed since the last commit, whatever the panel baseline', async () => {
+    const root = repo()
+    const service = new ChangesService(async () => git, tempDir('trellis-data-'))
+    await service.snapshotSession('p', root)
+    writeFileSync(path.join(root, 'app', 'src', 'a.ts'), 'edited\n')
+    writeFileSync(path.join(root, 'new.ts'), 'x\n')
+    const marks = (report: ChangeReport): string[] =>
+      report.kind === 'ok' ? report.sinceHead.map((f) => `${f.status} ${f.path}`).sort() : []
+
+    const before = await service.get('p', root, 'session')
+    expect(marks(before)).toEqual(['A new.ts', 'M app/src/a.ts'])
+
+    execFileSync('git', ['add', '-A'], { cwd: root })
+    execFileSync('git', ['commit', '-q', '-m', 'commit the session'], { cwd: root })
+    const after = await service.get('p', root, 'session')
+    // The panel still shows what this run changed; the tree no longer marks committed files.
+    expect(files(after)).toEqual(['A new.ts', 'M app/src/a.ts'])
+    expect(marks(after)).toEqual([])
+    expect(marks(await service.get('p', root, 'head'))).toEqual([])
+  })
+
   it('ignores a baseline left over from an earlier app run', async () => {
     const root = repo()
     const data = tempDir('trellis-data-')

@@ -30,6 +30,8 @@ export type ChangeReport =
       baselineTakenAt: number | null
       branch: string | null
       groups: ChangeGroup[]
+      /** Changed since the last commit (like git status), for the file tree's markers. */
+      sinceHead: { path: string; status: ChangeStatus }[]
       totals: { files: number; additions: number; deletions: number }
       computedAt: number
     }

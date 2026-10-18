@@ -1,6 +1,7 @@
 // End-to-end smoke test: launches the built app with a fake Claude CLI and checks the whole bridge
 // — hook settings → HTTP bridge → event ledger → timeline, git → changes — plus tabs, permissions,
 // stop/restart and the editor chooser.
+import { execFileSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { buffer, launchApp, makeProject, onboard, shot } from './support'
 
@@ -51,6 +52,15 @@ test('launch card → claude session → per-turn changes, tabs, stop/restart, e
     await expect(changes).toContainText('fake-output.txt', { timeout: 20_000 })
     await expect(changes).toContainText('notes.md')
     await shot(win, '04-changes')
+
+    // The file tree marks uncommitted files; after a commit the marks go, while the changes panel
+    // (since Claude started) still lists what this run changed (ADR-0033).
+    const notesRow = win.getByRole('treeitem').filter({ hasText: 'notes.md' })
+    await expect(notesRow.getByTestId('file-mark')).toHaveText('A')
+    execFileSync('git', ['add', '-A'], { cwd: project, stdio: 'ignore' })
+    execFileSync('git', ['commit', '-q', '-m', 'turn'], { cwd: project, stdio: 'ignore' })
+    await expect(notesRow.getByTestId('file-mark')).toHaveCount(0, { timeout: 10_000 })
+    await expect(changes).toContainText('notes.md')
 
     await win.getByRole('tab', { name: /결정|Decisions/ }).click()
     await expect(win.getByTestId('decisions')).toContainText('Track changes with git')

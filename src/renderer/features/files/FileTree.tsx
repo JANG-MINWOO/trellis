@@ -55,13 +55,13 @@ function ProjectFileTree() {
   const changed = useMemo(() => {
     const files = new Map<string, ChangeStatus>()
     const dirs = new Set<string>()
+    // Since the last commit, not the changes panel's baseline: a commit clears the markers.
     if (report?.kind === 'ok') {
-      for (const group of report.groups)
-        for (const f of group.files) {
-          files.set(f.path, f.status)
-          const parts = f.path.split('/')
-          for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/'))
-        }
+      for (const f of report.sinceHead) {
+        files.set(f.path, f.status)
+        const parts = f.path.split('/')
+        for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/'))
+      }
     }
     return { files, dirs }
   }, [report])
@@ -123,7 +123,12 @@ function ProjectFileTree() {
               {node.name}
             </span>
             {status && (
-              <span className={cn('text-2xs font-semibold', STATUS_TEXT[status])}>{status}</span>
+              <span
+                data-testid="file-mark"
+                className={cn('text-2xs font-semibold', STATUS_TEXT[status])}
+              >
+                {status}
+              </span>
             )}
             {!status && node.isDir && changed.dirs.has(node.path) && (
               <span className="h-1.5 w-1.5 rounded-full bg-warning" />
