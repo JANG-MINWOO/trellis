@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { invariantStatements, normalizeIntentInput, normalizeTaskDone } from './intent'
+import {
+  invariantStatements,
+  normalizeIntentInput,
+  normalizeTaskContinue,
+  normalizeTaskDone,
+} from './intent'
 
 describe('normalizeIntentInput', () => {
   it('builds the text from goal and must-not when none is given', () => {
@@ -46,6 +51,13 @@ describe('task fields', () => {
     expect(normalizeTaskDone('t1', 40, 100)).toEqual({ taskId: 't1', at: 40 })
     expect(normalizeTaskDone('t1', 400, 100)).toEqual({ taskId: 't1', at: 100 })
     expect(normalizeTaskDone(7, 40, 100)).toBeNull()
+  })
+
+  it('takes a task into a conversation from a past moment at most', () => {
+    expect(normalizeTaskContinue('t1', undefined, 100)).toEqual({ taskId: 't1' })
+    expect(normalizeTaskContinue('t1', 40, 100)).toEqual({ taskId: 't1', from: 40 })
+    expect(normalizeTaskContinue('t1', 400, 100)).toEqual({ taskId: 't1', from: 100 })
+    expect(normalizeTaskContinue('../x', 40, 100)).toBeNull()
   })
 })
 

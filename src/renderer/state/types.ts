@@ -29,6 +29,8 @@ export type StartError = Extract<TerminalStartResult, { ok: false }>
 
 export interface StartOptions {
   mode?: LaunchMode
+  /** Open this conversation again (ADR-0035). */
+  sessionId?: string
   permissionMode?: PermissionMode
   /** Restart this tab instead of picking one. */
   terminalId?: string

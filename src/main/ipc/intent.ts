@@ -1,10 +1,10 @@
 // The intent layer (M2, M4): the ledger, intents, decision candidates and behavior specs.
 import { Invoke } from '@shared/ipc'
-import { normalizeIntentInput, normalizeTaskDone, normalizeTaskId } from '@shared/intent'
+import { normalizeIntentInput, normalizeTaskContinue, normalizeTaskDone } from '@shared/intent'
 import { recordLanguageOf } from '@shared/settings'
 import type { AppContext } from '../context'
 import { listDecisionDocs, resolveDecision } from '../features/decisions'
-import { trellisEvent } from '../features/events'
+import { trellisEvent, type EventRef } from '../features/events'
 import { newId } from '../lib/ids'
 import { invariantsFromIntent, listSpecs, resolveBehavior } from '../features/specs'
 import { asString, handle, projectOf } from './common'
@@ -12,13 +12,24 @@ import { asString, handle, projectOf } from './common'
 export function registerIntentIpc(ctx: AppContext): void {
   const project = (id: unknown) => projectOf(ctx, id)
 
+  // The tab's conversation as main knows it (null while unknown: then the tab's next prompt
+  // decides, ADR-0035). The renderer only names the tab.
+  const tabOf = (projectId: string, terminalId: unknown): EventRef => {
+    const tab = typeof terminalId === 'string' ? ctx.ptys.get(terminalId) : undefined
+    return tab?.projectId === projectId && tab.kind === 'claude'
+      ? { sessionId: tab.sessionId, promptId: null, terminalId: tab.id }
+      : { sessionId: null, promptId: null, terminalId: null }
+  }
+
   handle(Invoke.eventsList, (id, limit) =>
     ctx.events.list(project(id).id, typeof limit === 'number' ? limit : undefined),
   )
-  handle(Invoke.intentSave, async (id, input) => {
+  handle(Invoke.intentSave, async (id, input, terminalId) => {
+    const p = project(id)
     const data = normalizeIntentInput(input)
     data.taskId ??= newId()
-    const event = trellisEvent(project(id).id, 'intent.set', data)
+    data.scope = 'conversation'
+    const event = trellisEvent(p.id, 'intent.set', data, tabOf(p.id, terminalId))
     await ctx.events.append(event)
     return event
   })
@@ -26,10 +37,11 @@ export function registerIntentIpc(ctx: AppContext): void {
     const data = normalizeTaskDone(taskId, at)
     if (data) await ctx.events.append(trellisEvent(project(id).id, 'intent.done', data))
   })
-  handle(Invoke.intentKeep, async (id, taskId) => {
-    const task = normalizeTaskId(taskId)
-    if (task)
-      await ctx.events.append(trellisEvent(project(id).id, 'intent.continue', { taskId: task }))
+  handle(Invoke.intentKeep, async (id, taskId, terminalId, from) => {
+    const p = project(id)
+    const data = normalizeTaskContinue(taskId, from)
+    if (data)
+      await ctx.events.append(trellisEvent(p.id, 'intent.continue', data, tabOf(p.id, terminalId)))
   })
 
   handle(Invoke.decisionsList, (id) => {

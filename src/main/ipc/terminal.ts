@@ -11,6 +11,7 @@ export function registerTerminalIpc(ctx: AppContext): void {
   handle(Invoke.terminalClose, (terminalId) => ctx.ptys.dispose(asString(terminalId)))
   handle(Invoke.terminalList, () => ctx.ptys.list())
   handle(Invoke.terminalAttach, (terminalId) => ctx.ptys.attach(asString(terminalId)))
+  handle(Invoke.terminalConversations, (id) => ctx.terminals.conversations(asString(id)))
 
   ipcMain.on(Send.terminalWrite, (_e, terminalId: unknown, data: unknown) => {
     if (typeof data === 'string') ctx.ptys.write(asString(terminalId), data)

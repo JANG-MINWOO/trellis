@@ -4,13 +4,15 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from '@shared/cli-args'
 import type {
-  LaunchMode,
+  ClaudeLaunchMode,
+  ConversationView,
   PermissionMode,
   Settings,
   TerminalInfo,
   TerminalKind,
   TerminalStartRequest,
   TerminalStartResult,
+  TrellisEvent,
 } from '@shared/types'
 import { newId } from '../../lib/ids'
 import { logFailure } from '../../lib/log'
@@ -20,9 +22,10 @@ import { defaultShell } from '../../platform/shells'
 import { findExecutable, spawnTarget } from '../../platform/which'
 import type { AgentAdapter } from '../agents'
 import type { ProjectRegistry } from '../projects'
+import { chooseLaunch, isSessionId, listConversations } from './conversations'
 import { PtyManager, type SpawnPlan } from './pty-manager'
 
-/** A continue attempt that dies this fast without events is treated as "nothing to continue". */
+/** A continue or resume that dies this fast without events is treated as "nothing to open". */
 const CONTINUE_GRACE_MS = 20_000
 const BEFORE_LAUNCH_TIMEOUT_MS = 4000
 
@@ -40,8 +43,10 @@ export interface TerminalServiceDeps {
     projectId: string
     terminalId: string
     sessionId: string | null
-    mode: LaunchMode
+    mode: ClaudeLaunchMode
   }) => void
+  /** The project's ledger, far enough back to list its conversations (ADR-0035). */
+  ledger: (projectId: string) => Promise<TrellisEvent[]>
 }
 
 type TerminalSeed = Omit<TerminalInfo, 'running' | 'exitCode' | 'startedAt'>
@@ -49,9 +54,16 @@ type TerminalSeed = Omit<TerminalInfo, 'running' | 'exitCode' | 'startedAt'>
 export class TerminalService {
   /** Terminals that have reported at least one agent event (proves the session is alive). */
   private readonly sawEvents = new Set<string>()
+  /** `chosen`: the human picked the conversation, so a failed open is shown, not replaced. */
   private readonly launches = new Map<
     string,
-    { mode: LaunchMode; permissionMode: PermissionMode; startedAt: number; retried: boolean }
+    {
+      mode: ClaudeLaunchMode
+      chosen: boolean
+      permissionMode: PermissionMode
+      startedAt: number
+      retried: boolean
+    }
   >()
   /** Two quick start requests for the same project must not create two terminals. */
   private readonly startQueue = new KeyedSerialQueue()
@@ -64,13 +76,27 @@ export class TerminalService {
     })
   }
 
-  /** Called for every agent event so we can learn the session id behind a terminal. */
-  noteAgentEvent(terminalId: string | null, sessionId: string | null): void {
+  /**
+   * Called for every agent event so we can learn the session id behind a terminal. After `/clear`
+   * the tab's next conversation is unknown until its first prompt (ADR-0035).
+   */
+  noteAgentEvent(terminalId: string | null, event: TrellisEvent): void {
     if (!terminalId) return
     this.sawEvents.add(terminalId)
     const info = this.deps.ptys.get(terminalId)
-    if (info && sessionId && info.sessionId !== sessionId)
+    if (!info) return
+    const cleared = event.kind === 'session.end' && event.data.reason === 'clear'
+    const sessionId = cleared ? null : event.sessionId
+    if ((cleared || sessionId) && info.sessionId !== sessionId)
       this.deps.ptys.update(terminalId, { sessionId })
+  }
+
+  /** Conversations of the project to open again, most recent first. */
+  async conversations(projectId: string): Promise<ConversationView[]> {
+    const project = this.deps.registry.get(projectId)
+    if (!project) return []
+    const [events, env] = await Promise.all([this.deps.ledger(projectId), this.childEnv()])
+    return listConversations(this.deps.adapter, events, project.path, env)
   }
 
   start(req: TerminalStartRequest): Promise<TerminalStartResult> {
@@ -126,18 +152,22 @@ export class TerminalService {
         message: this.deps.settings().claude.path || this.deps.adapter.executableName,
       }
     }
-    const otherClaudeRunning = this.ofProject(project.id, 'claude').some(
+    const others = this.ofProject(project.id, 'claude').filter(
       (t) => t.running && t.id !== existing?.id,
     )
-    let mode = req.mode ?? this.deps.settings().claude.defaultMode
-    // "Continue" opens the most recent conversation; another tab may be using it right now.
-    if (mode === 'continue' && otherClaudeRunning) mode = 'new'
-    if (mode === 'continue' && !(await this.deps.adapter.hasPriorSession(project.path, env)))
-      mode = 'new'
+    const otherClaudeRunning = others.length > 0
+    const chosen = isSessionId(req.sessionId) ? req.sessionId : null
+    if (chosen && others.some((t) => t.sessionId === chosen))
+      return { ok: false, reason: 'session-in-use', message: chosen }
+    const { mode, sessionId } = await chooseLaunch({
+      chosen,
+      mode: req.mode ?? this.deps.settings().claude.defaultMode,
+      otherClaudeRunning,
+      conversations: () => this.conversations(project.id),
+      hasPriorSession: () => this.deps.adapter.hasPriorSession(project.path, env),
+    })
     const permissionMode = req.permissionMode ?? this.deps.settings().claude.permissionMode
-
     const terminalId = existing?.id ?? newId()
-    const sessionId = mode === 'new' ? newId() : null
     const { token, configFile } = this.deps.bridge()
     const args = this.deps.adapter.launchArgs({
       mode,
@@ -165,7 +195,13 @@ export class TerminalService {
     }
 
     this.sawEvents.delete(terminalId)
-    this.launches.set(terminalId, { mode, permissionMode, startedAt: Date.now(), retried: false })
+    this.launches.set(terminalId, {
+      mode,
+      chosen: chosen !== null,
+      permissionMode,
+      startedAt: Date.now(),
+      retried: false,
+    })
     const seed: TerminalSeed = {
       id: terminalId,
       projectId: project.id,
@@ -207,7 +243,8 @@ export class TerminalService {
     const launch = this.launches.get(info.id)
     if (
       launch &&
-      launch.mode === 'continue' &&
+      launch.mode !== 'new' &&
+      !launch.chosen &&
       !launch.retried &&
       info.exitCode !== 0 &&
       Date.now() - launch.startedAt < CONTINUE_GRACE_MS &&

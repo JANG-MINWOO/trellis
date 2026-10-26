@@ -2,11 +2,11 @@
 // derived values next to the source).
 import {
   attachTasks,
-  deriveTasks,
   type IntentItem,
   type TaskEndItem,
   type TurnPrediction,
-} from './tasks'
+} from './task-progress'
+import { deriveTasks } from './tasks'
 import type {
   AnalysisRun,
   BehaviorCandidate,
@@ -48,7 +48,7 @@ export interface TurnItem {
    */
   changes: ChangeEntry[] | null
   changesTruncated: boolean
-  /** The task the turn belongs to and its intent when the prompt was sent (ADR-0034). */
+  /** The task the turn belongs to and its intent when the prompt was sent (ADR-0034, 0035). */
   taskId: string | null
   intent: IntentData | null
   /** What this turn changed against the task's prediction; null without a prediction. */

@@ -105,11 +105,12 @@ async function bootstrap(): Promise<void> {
           trellisEvent(
             projectId,
             'session.start',
-            { source: mode === 'continue' ? 'resume' : 'startup', model: null },
+            { source: mode === 'new' ? 'startup' : 'resume', model: null },
             { sessionId, promptId: null, terminalId },
           ),
         )
         .catch(logFailure('terminal', 'recording the session start failed')),
+    ledger: (projectId) => events.history(projectId),
   })
 
   const analyzer = new TurnAnalyzer({
@@ -141,7 +142,7 @@ async function bootstrap(): Promise<void> {
     adapter,
     events,
     pipeline,
-    onAgentEvent: (terminalId, sessionId) => terminalService.noteAgentEvent(terminalId, sessionId),
+    onAgentEvent: (terminalId, event) => terminalService.noteAgentEvent(terminalId, event),
     notify: (event, project) => notifyForEvent(event, project.name, settings.get(), mainWindow),
   })
 

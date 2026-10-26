@@ -7,6 +7,8 @@ import type { EventOf, TrellisEvent } from '@shared/types'
 import { appendJsonl, readJsonlTail } from '../../lib/jsonl'
 import { KeyedSerialQueue } from '../../lib/serial'
 
+const HISTORY = 20_000
+
 /** The append-only event ledger, one JSONL file per project. Everything else is computed from it. */
 export class EventStore extends EventEmitter<{ event: [TrellisEvent] }> {
   private readonly queue = new KeyedSerialQueue()
@@ -31,12 +33,17 @@ export class EventStore extends EventEmitter<{ event: [TrellisEvent] }> {
     )
   }
 
+  /** Far back, for what can be older than the window (open candidates, conversations). */
+  history(projectId: string): Promise<TrellisEvent[]> {
+    return this.list(projectId, HISTORY)
+  }
+
   /** A decision or behavior candidate the human has not answered yet (looks far back). */
   async openCandidate<K extends 'decision.candidate' | 'behavior.candidate'>(
     projectId: string,
     kind: K,
     candidateId: string,
   ): Promise<EventOf<K> | null> {
-    return openCandidate(await this.list(projectId, 20_000), kind, candidateId)
+    return openCandidate(await this.history(projectId), kind, candidateId)
   }
 }

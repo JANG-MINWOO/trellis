@@ -123,7 +123,10 @@
   "intent": {
     "title": "작업 의도",
     "write": "의도 적기",
-    "empty": "이번 작업에서 하려는 것과 하면 안 되는 것을 먼저 적어 두세요. 나중에 '왜 그렇게 했지?'에 답하는 근거가 돼요.",
+    "empty": "이 대화에서 하려는 것과 하면 안 되는 것을 먼저 적어 두세요. 나중에 '왜 그렇게 했지?'에 답하는 근거가 돼요. 의도는 대화마다 따로 남고, 대화를 다시 열면 함께 돌아와요.",
+    "waiting": "Claude에 다음 요청을 보내면 그 대화의 작업이 돼요.",
+    "elsewhere": "다른 대화에서 진행 중인 작업",
+    "takeHere": "이 대화에서 이어서",
     "hint": "AI가 아니라 직접 짧게 쓰는 게 핵심이에요. 하면 안 되는 것은 한 줄에 하나씩 쓰면 동작 명세의 불변식으로 옮길 수 있어요.",
     "saveAndPaste": "저장하고 Claude에 붙여넣기",
     "noClaude": "실행 중인 Claude 세션이 없어서 붙여넣지 못했어요. 의도는 저장됐어요.",
@@ -152,7 +155,6 @@
     "pendingBehaviors_other": "확인할 동작 {{count}}",
     "mustNotConcerns": "하면 안 되는 것을 건드렸을 수 있어요 (AI 추정)",
     "check": {
-      "newConversation": "새 대화가 시작됐어요.",
       "idle": "한동안 쉬었다가 다시 왔어요 (마지막 활동 {{ago}}).",
       "offIntent": "의도와 다른 요청 같아요 (AI 추정): {{prompt}}",
       "offPrediction": "예상한 곳은 그대로 두고 다른 곳만 바꾼 턴이 있어요: {{prompt}}",
@@ -362,6 +364,11 @@
   },
   "launch": {
     "permission": "권한",
+    "conversations": "이전 대화",
+    "conversationsHint": "고르면 그 대화가 거기서 적은 작업 의도와 함께 열려요. Trellis 밖에서 한 대화는 Claude에서 /resume으로 열어요.",
+    "continueHint": "Trellis에서 마지막으로 쓴 대화를 그 작업 의도와 함께 열어요.",
+    "unavailable": "Claude 기록에 없어서 열 수 없어요",
+    "openElsewhere": "다른 탭에서 열려 있어요",
     "continueBusy": "다른 탭에서 Claude가 실행 중이라 \"이어서 하기\"는 쓸 수 없어요. 같은 대화를 두 곳에서 열면 기록이 꼬여요. 새 대화로 시작하세요."
   },
   "permission": {

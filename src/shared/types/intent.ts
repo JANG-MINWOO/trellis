@@ -12,6 +12,11 @@ export interface IntentData {
   taskId?: string
   /** A new task that also takes the turns since this time (when Trellis asked about them). */
   from?: number
+  /**
+   * 'conversation': the task belongs to the Claude conversation it was written in (ADR-0035).
+   * Absent in intents written before: those cover the whole project, one task at a time.
+   */
+  scope?: 'conversation'
 }
 
 /** The human ended a task. `at` may be earlier than the event when Trellis asked about later turns. */
@@ -20,9 +25,14 @@ export interface TaskDone {
   at: number
 }
 
-/** The human said the work still belongs to this task when Trellis asked. */
+/**
+ * The work in the event's conversation belongs to this task from `from` (default: the event's
+ * time): "still this task" when Trellis asked, the task taken into another conversation, or main
+ * tying a task to the conversation it was waiting for (ADR-0035).
+ */
 export interface TaskContinue {
   taskId: string
+  from?: number
 }
 
 /** Does the turn's request continue the task's intent? The analysis' guess (ADR-0034). */

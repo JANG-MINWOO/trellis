@@ -123,7 +123,10 @@
   "intent": {
     "title": "Intent",
     "write": "Write intent",
-    "empty": "Before you start, write down what you want to do and what must not break. Later it answers \"why did we do this?\"",
+    "empty": "Before you start, write down what you want to do in this conversation and what must not break. Later it answers \"why did we do this?\" Each conversation keeps its own intent, and it comes back when you open the conversation again.",
+    "waiting": "It becomes the task of the conversation you send Claude's next request in.",
+    "elsewhere": "Tasks in progress in other conversations",
+    "takeHere": "Continue here",
     "hint": "Write it yourself, briefly — that is the point. One \"must not\" per line can become an invariant in the behavior spec.",
     "saveAndPaste": "Save and paste into Claude",
     "noClaude": "No running Claude session to paste into. Your intent was saved.",
@@ -156,7 +159,6 @@
     "pendingBehaviors_other": "{{count}} behaviors to review",
     "mustNotConcerns": "May break a must-not (AI guess)",
     "check": {
-      "newConversation": "A new conversation started.",
       "idle": "You were away for a while (last activity {{ago}}).",
       "offIntent": "This request looks like different work (AI guess): {{prompt}}",
       "offPrediction": "A turn left every expected area alone and changed others: {{prompt}}",
@@ -380,6 +382,11 @@
   },
   "launch": {
     "permission": "Permissions",
+    "conversations": "Earlier conversations",
+    "conversationsHint": "Pick one to open it with the intent written there. Conversations from outside Trellis open with /resume in Claude.",
+    "continueHint": "Opens the conversation last used in Trellis, with its intent.",
+    "unavailable": "Claude no longer has this conversation",
+    "openElsewhere": "Open in another tab",
     "continueBusy": "Claude is running in another tab, so \"Continue\" is unavailable — two tabs on one conversation would tangle it. Start a new conversation."
   },
   "permission": {

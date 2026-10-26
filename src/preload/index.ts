@@ -47,6 +47,7 @@ const api: TrellisApi = {
     close: (terminalId) => invoke(Invoke.terminalClose, terminalId),
     list: () => invoke(Invoke.terminalList),
     attach: (terminalId) => invoke(Invoke.terminalAttach, terminalId),
+    conversations: (id) => invoke(Invoke.terminalConversations, id),
     onData: (cb) => subscribe(Push.terminalData, cb),
     onUpdate: (cb) => subscribe(Push.terminalUpdate, cb),
     onRemoved: (cb) => subscribe(Push.terminalRemoved, cb),
@@ -56,9 +57,9 @@ const api: TrellisApi = {
     onEvent: (cb) => subscribe(Push.event, cb),
   },
   intent: {
-    save: (id, intent) => invoke(Invoke.intentSave, id, intent),
+    save: (id, intent, terminalId) => invoke(Invoke.intentSave, id, intent, terminalId),
     done: (id, taskId, at) => invoke(Invoke.intentDone, id, taskId, at),
-    keep: (id, taskId) => invoke(Invoke.intentKeep, id, taskId),
+    keep: (id, taskId, terminalId, from) => invoke(Invoke.intentKeep, id, taskId, terminalId, from),
   },
   changes: {
     get: (id, baseline) => invoke(Invoke.changesGet, id, baseline),

@@ -1,8 +1,9 @@
 // Agent hook payload → normalized event → ledger and turn pipeline (ADR-0003, ADR-0027).
 import type { Project, TrellisEvent } from '@shared/types'
 import type { AgentAdapter } from '../agents'
+import { logFailure } from '../../lib/log'
 import type { BridgeHandler } from '../bridge'
-import type { EventStore } from '../events'
+import { bindWaitingTask, type EventStore } from '../events'
 import type { ProjectRegistry } from '../projects'
 import type { TurnPipeline } from './turn-pipeline'
 
@@ -12,7 +13,7 @@ export interface HookIngestDeps {
   events: EventStore
   pipeline: TurnPipeline
   /** Every agent event proves the tab's session is alive and tells its session id. */
-  onAgentEvent: (terminalId: string | null, sessionId: string | null) => void
+  onAgentEvent: (terminalId: string | null, event: TrellisEvent) => void
   /** A finished turn or a question for the human (shown when Trellis is in the background). */
   notify: (event: TrellisEvent, project: Project) => void
 }
@@ -29,11 +30,14 @@ export function createHookIngest(deps: HookIngestDeps): BridgeHandler {
       now: receivedAt,
     })
     if (!event) return undefined
-    deps.onAgentEvent(terminalId, event.sessionId)
+    deps.onAgentEvent(terminalId, event)
     // Before the prompt hook is answered (the agent waits for it), so the snapshot predates the turn.
     if (event.kind === 'prompt.submit' && event.promptId)
       await pipeline.onPrompt(project, event.promptId)
     await events.append(event)
+    // Off the prompt's reply path: the agent waits for it.
+    if (event.kind === 'prompt.submit')
+      void bindWaitingTask(events, event).catch(logFailure('intent', 'tying a task failed'))
     if (event.kind === 'turn.stop') {
       const reason = await pipeline.onStop(project, event, adapter.isContinuedStop(raw))
       // A turn sent back by the guard is not finished; say so only when it really is.

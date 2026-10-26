@@ -2,11 +2,12 @@
 // finds a decision and a behavior change → the human records the decision and applies the behavior
 // → files appear in the project; "must not" lines become invariants. Then the task goes on for
 // another turn, the work moves to something else (Trellis asks, the human starts a new task), and
-// the new task is finished and reopened.
+// the new task is finished and reopened. Then tasks per conversation (ADR-0035): two tabs, two
+// tasks, and a conversation opened again from the list brings its task back.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
-import { launchApp, makeProject, onboard, shot } from './support'
+import { buffer, launchApp, makeProject, onboard, shot } from './support'
 
 test('intent → turn analysis → decision record and behavior spec', async () => {
   test.skip(process.platform === 'win32', 'fake CLI is a shebang script')
@@ -121,6 +122,72 @@ test('intent → turn analysis → decision record and behavior spec', async () 
     await card.getByTestId('intent-reopen').click()
     await expect(card.getByTestId('intent-status')).toContainText(/진행 중|In progress/)
     await expect(win.getByTestId('timeline-task-end')).toHaveCount(1)
+  } finally {
+    await app.close()
+  }
+})
+
+test('each conversation keeps its task, and opening it again brings the task back', async () => {
+  test.skip(process.platform === 'win32', 'fake CLI is a shebang script')
+  const project = makeProject()
+  const { app, win } = await launchApp(project)
+  try {
+    await onboard(win)
+    await win.getByTestId('launch-new').click()
+    await expect(win.getByTestId('timeline')).toBeVisible({ timeout: 20_000 })
+    const card = win.getByTestId('intent-card')
+    const send = async (text: string): Promise<void> => {
+      await win.getByTestId('composer-input').fill(text)
+      await win.getByTestId('composer-input').press('Enter')
+    }
+    const writeTask = async (goal: string): Promise<void> => {
+      await card.getByTestId('intent-edit').click()
+      await win.getByTestId('intent-goal').fill(goal)
+      await win.getByTestId('intent-save').click()
+    }
+
+    // Conversation A in the first tab.
+    await writeTask('A 로그인 잠금')
+    await send('work on A')
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 1개|1 turn/, {
+      timeout: 20_000,
+    })
+
+    // A second tab is another conversation: no task of its own, A offered to continue there.
+    await win.getByTestId('new-tab').click()
+    await win.getByTestId('launch-new').click()
+    await expect(win.getByTestId('tab-claude-2')).toBeVisible()
+    await expect(card.getByTestId('intent-status')).toHaveCount(0)
+    await expect(card.getByTestId('tasks-elsewhere')).toContainText('A 로그인 잠금')
+    await writeTask('B 로고 바꾸기')
+    await send('work on B')
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 1개|1 turn/, {
+      timeout: 20_000,
+    })
+    await expect(card.getByTestId('task-details')).toContainText('B 로고 바꾸기')
+    await shot(win, '17-conversation-task')
+
+    // The first tab still shows its own task.
+    await win.getByTestId('tab-claude-1').click()
+    await expect(card.getByTestId('task-details')).toContainText('A 로그인 잠금')
+
+    // Stop it and open conversation A again from the list; B is open in the other tab.
+    await win.getByTestId('stop-claude').click()
+    const rows = win.getByTestId('conversation')
+    await expect(rows).toHaveCount(2, { timeout: 10_000 })
+    await expect(rows.filter({ hasText: 'B 로고 바꾸기' })).toBeDisabled()
+    await shot(win, '18-conversations')
+    await rows.filter({ hasText: 'A 로그인 잠금' }).click()
+    await expect(win.getByTestId('stop-claude')).toBeVisible({ timeout: 10_000 })
+    await expect.poll(() => buffer(win, 'claude', 1)).toContain('--resume')
+    await send('more on A')
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 2개|2 turns/, {
+      timeout: 20_000,
+    })
+    await expect(card.getByTestId('task-details')).toContainText('A 로그인 잠금')
+    await win.getByTestId('tab-claude-2').click()
+    await expect(card.getByTestId('task-details')).toContainText('B 로고 바꾸기')
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 1개|1 turn/)
   } finally {
     await app.close()
   }

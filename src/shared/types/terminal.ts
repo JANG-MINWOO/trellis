@@ -18,10 +18,15 @@ export interface TerminalInfo {
   exitCode: number | null
 }
 
+/** How a Claude process starts: the settings' two modes, or a chosen conversation (ADR-0035). */
+export type ClaudeLaunchMode = LaunchMode | 'resume'
+
 export interface TerminalStartRequest {
   projectId: string
   kind: TerminalKind
   mode?: LaunchMode
+  /** Open this conversation again (overrides `mode`). */
+  sessionId?: string
   permissionMode?: PermissionMode
   /** Restart this terminal (same tab). */
   terminalId?: string
@@ -38,3 +43,20 @@ export type TerminalStartResult =
       reason: 'agent-not-found' | 'project-missing' | 'spawn-failed' | 'session-in-use'
       message: string
     }
+
+/** A conversation Trellis has seen in the project, to open again (ADR-0035). */
+export interface ConversationSummary {
+  sessionId: string
+  startedAt: number
+  lastAt: number
+  turns: number
+  /** Its latest task's goal, or else its first prompt (first line). */
+  title: string
+  /** Its latest task, if any: still in progress in this conversation, finished, or neither. */
+  task: { taskId: string; state: 'open' | 'done' | 'ended' } | null
+}
+
+export interface ConversationView extends ConversationSummary {
+  /** The agent still has the conversation, so it can be opened. */
+  available: boolean
+}

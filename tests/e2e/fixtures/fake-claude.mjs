@@ -86,9 +86,23 @@ function interactive() {
       ),
     ]),
   )
-  const sessionId = args.includes('--session-id')
-    ? args[args.indexOf('--session-id') + 1]
-    : 'fake-session'
+  const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null)
+  const sessionId = flag('--session-id') ?? flag('--resume') ?? 'fake-session'
+  // Like the real CLI: one <session id>.jsonl per conversation under <config>/projects/<cwd>, and
+  // --resume of a conversation it does not have fails at once.
+  const config = process.env.CLAUDE_CONFIG_DIR
+  const transcript = config
+    ? path.join(
+        config,
+        'projects',
+        process.cwd().replace(/[^a-zA-Z0-9]/g, '-'),
+        `${sessionId}.jsonl`,
+      )
+    : null
+  if (flag('--resume') && transcript && !fs.existsSync(transcript)) {
+    process.stdout.write(`No conversation found with session ID: ${sessionId}\r\n`)
+    process.exit(1)
+  }
 
   /** Posts a hook payload; resolves with the parsed response body (null when empty). */
   function post(body) {
@@ -116,7 +130,7 @@ function interactive() {
 
   // Real Claude Code does not send SessionStart over HTTP hooks; neither do we.
   const flags = args.map((a, i) => (args[i - 1] === '--settings' ? '<settings>' : a)).join(' ')
-  process.stdout.write(`\x1b[1;32mFake Claude\x1b[0m ready. args: ${flags}\r\n> `)
+  process.stdout.write(`\x1b[1;32mFake Claude\x1b[0m ready (${sessionId}). args: ${flags}\r\n> `)
 
   const rl = readline.createInterface({ input: process.stdin })
   rl.on('line', async (raw) => {
@@ -124,6 +138,10 @@ function interactive() {
     const line = raw.replaceAll('\x1b[200~', '').replaceAll('\x1b[201~', '')
     if (!line) return
     const promptId = randomUUID()
+    if (transcript) {
+      fs.mkdirSync(path.dirname(transcript), { recursive: true })
+      fs.appendFileSync(transcript, `${JSON.stringify({ type: 'user', prompt: line })}\n`)
+    }
     await post({ hook_event_name: 'UserPromptSubmit', prompt: line, prompt_id: promptId })
     const file = path.join(process.cwd(), 'src', 'feature', 'fake-output.txt')
     fs.mkdirSync(path.dirname(file), { recursive: true })

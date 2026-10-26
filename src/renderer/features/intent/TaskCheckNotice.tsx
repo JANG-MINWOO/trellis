@@ -5,7 +5,7 @@ import { relativeTime } from '../../lib/format'
 
 /**
  * "Still working on this task?" — shown in the intent card, never blocking the terminal. The
- * signal only decides when to ask; the human decides where the task ends (ADR-0034).
+ * signal only decides when to ask; the human decides where the task ends (ADR-0034, 0035).
  */
 export function TaskCheckNotice({
   check,
@@ -24,7 +24,6 @@ export function TaskCheckNotice({
   const { t } = useTranslation()
   const snippet = (prompt ?? '').replace(/\s+/g, ' ').slice(0, 80)
   const reason = {
-    'new-conversation': t('intent.check.newConversation'),
     idle: t('intent.check.idle', { ago: relativeTime(check.boundary) }),
     'off-intent': t('intent.check.offIntent', { prompt: snippet }),
     'off-prediction': t('intent.check.offPrediction', { prompt: snippet }),

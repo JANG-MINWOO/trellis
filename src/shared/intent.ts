@@ -1,5 +1,5 @@
 // Intent input from the intent card. It goes into the ledger, so it is bounded and typed here.
-import type { IntentData, TaskDone } from './types'
+import type { IntentData, TaskContinue, TaskDone } from './types'
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 /** Task ids are UUIDs made by main; anything id-like is accepted, nothing else. */
@@ -33,6 +33,18 @@ export function normalizeIntentInput(input: unknown, now = Date.now()): IntentDa
 export function normalizeTaskDone(taskId: unknown, at: unknown, now = Date.now()): TaskDone | null {
   const id = normalizeTaskId(taskId)
   return id ? { taskId: id, at: timeOf(at, now) ?? now } : null
+}
+
+/** "This conversation is on the task (from `from`, default now)". Null when the id is bad. */
+export function normalizeTaskContinue(
+  taskId: unknown,
+  from: unknown,
+  now = Date.now(),
+): TaskContinue | null {
+  const id = normalizeTaskId(taskId)
+  if (!id) return null
+  const at = timeOf(from, now)
+  return at ? { taskId: id, from: at } : { taskId: id }
 }
 
 /** "- must not drop users" lines of an intent → statements for invariant candidates. */

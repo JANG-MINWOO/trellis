@@ -1,12 +1,13 @@
-// When to ask "is this still the same work?" about the task in progress (ADR-0034). The answer
-// is the human's; these signals only decide when the intent card asks.
-import type { Task, TaskTurn } from './tasks'
-import type { TrellisEvent } from './types'
+// When to ask "is this still the same work?" about the task in progress (ADR-0034, ADR-0035).
+// The answer is the human's; these signals only decide when the intent card asks. A new
+// conversation is not a signal: tasks belong to conversations, so it starts without one.
+import type { TaskTurn } from './task-progress'
+import type { Task } from './tasks'
 
 /** After this long without activity, Trellis asks whether the work is still the same task. */
 export const TASK_IDLE_MS = 6 * 60 * 60 * 1000
 
-export type TaskCheckReason = 'new-conversation' | 'idle' | 'off-intent' | 'off-prediction'
+export type TaskCheckReason = 'idle' | 'off-intent' | 'off-prediction'
 
 export interface TaskCheck {
   reason: TaskCheckReason
@@ -14,32 +15,15 @@ export interface TaskCheck {
   boundary: number
 }
 
-const startsConversation = (e: TrellisEvent): boolean =>
-  (e.kind === 'session.start' && (e.data.source === 'startup' || e.data.source === 'clear')) ||
-  (e.kind === 'session.end' && e.data.reason === 'clear')
-
 /**
  * Whether to ask "still the same work?" about the task in progress, and from when. Signals before
  * the human last wrote or confirmed the intent do not count.
  */
-export function checkTask(
-  task: Task,
-  turns: readonly TaskTurn[],
-  events: readonly TrellisEvent[],
-  now: number,
-): TaskCheck | null {
+export function checkTask(task: Task, turns: readonly TaskTurn[], now: number): TaskCheck | null {
   if (task.endedAt !== null) return null
   const confirmed = Math.max(task.revisions.at(-1)!.ts, task.continuedAt ?? 0)
   const mine = turns.filter((t) => t.taskId === task.taskId)
   const found: TaskCheck[] = []
-
-  // A new conversation once the task already had turns (before any, it is just the start).
-  const first = mine[0]?.startedAt
-  if (first !== undefined) {
-    const starts = events.filter((e) => e.ts > confirmed && e.ts > first && startsConversation(e))
-    if (starts.length > 0)
-      found.push({ reason: 'new-conversation', boundary: Math.min(...starts.map((e) => e.ts)) })
-  }
 
   let last = confirmed
   let idle: TaskCheck | null = null

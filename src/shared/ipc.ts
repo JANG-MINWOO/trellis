@@ -17,6 +17,7 @@ import type {
   ProjectView,
   Settings,
   SettingsPatch,
+  ConversationView,
   TerminalInfo,
   TerminalStartRequest,
   TerminalStartResult,
@@ -43,6 +44,7 @@ export const Invoke = {
   terminalClose: 'terminal:close',
   terminalList: 'terminal:list',
   terminalAttach: 'terminal:attach',
+  terminalConversations: 'terminal:conversations',
   eventsList: 'events:list',
   intentSave: 'intent:save',
   intentDone: 'intent:done',
@@ -144,6 +146,8 @@ export interface TrellisApi {
     list(): Promise<TerminalInfo[]>
     /** Returns buffered output so a reloaded renderer can redraw a live terminal. */
     attach(terminalId: string): Promise<string>
+    /** Claude conversations of the project to open again, most recent first (ADR-0035). */
+    conversations(projectId: string): Promise<ConversationView[]>
     onData(cb: (msg: TerminalDataMessage) => void): Unsubscribe
     onUpdate(cb: (terminal: TerminalInfo) => void): Unsubscribe
     onRemoved(cb: (terminalId: string) => void): Unsubscribe
@@ -152,13 +156,17 @@ export interface TrellisApi {
     list(projectId: string, limit?: number): Promise<TrellisEvent[]>
     onEvent(cb: (event: TrellisEvent) => void): Unsubscribe
   }
-  /** Tasks (ADR-0034): no taskId starts a new task; the same taskId refines (or reopens) it. */
+  /**
+   * Tasks (ADR-0034, 0035): no taskId starts a new task; the same taskId refines (or reopens) it.
+   * Tasks belong to the conversation of the Claude tab they are written in (`terminalId`; none:
+   * the next conversation that sends a prompt).
+   */
   intent: {
-    save(projectId: string, intent: IntentData): Promise<TrellisEvent>
+    save(projectId: string, intent: IntentData, terminalId: string | null): Promise<TrellisEvent>
     /** Ends the task at `at` (default now): turns from then on no longer belong to it. */
     done(projectId: string, taskId: string, at?: number): Promise<void>
-    /** "Still this task" when Trellis asked. */
-    keep(projectId: string, taskId: string): Promise<void>
+    /** The tab's conversation is on this task (from `from`): "still this task", or taken over. */
+    keep(projectId: string, taskId: string, terminalId: string | null, from?: number): Promise<void>
   }
   changes: {
     get(projectId: string, baseline: Baseline): Promise<ChangeReport>

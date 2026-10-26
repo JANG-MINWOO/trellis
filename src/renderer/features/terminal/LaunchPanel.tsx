@@ -5,9 +5,13 @@ import type { PermissionMode } from '@shared/types'
 import { Button } from '../../components/ui'
 import { cn } from '../../lib/cn'
 import { useStore } from '../../state/store'
+import { ConversationList } from './ConversationList'
 import { PermissionSelect } from './PermissionSelect'
 
-/** Choose how Claude asks for permission, then continue the last conversation or start a new one. */
+/**
+ * Choose how Claude asks for permission, then continue the last conversation, start a new one, or
+ * open an earlier one with its task (ADR-0035).
+ */
 export function LaunchPanel({
   projectId,
   terminalId,
@@ -39,9 +43,10 @@ export function LaunchPanel({
   )
   const [permission, setPermission] = useState<PermissionMode>(defaultPermission)
 
-  const start = (mode: 'continue' | 'new'): void => {
+  const start = (mode: 'continue' | 'new', sessionId?: string): void => {
     void startTerminal(projectId, 'claude', {
       mode,
+      sessionId,
       permissionMode: permission,
       terminalId,
       newTab,
@@ -65,7 +70,7 @@ export function LaunchPanel({
           variant="primary"
           className="flex-1"
           disabled={otherRunning}
-          title={otherRunning ? t('launch.continueBusy') : undefined}
+          title={otherRunning ? t('launch.continueBusy') : t('launch.continueHint')}
           onClick={() => start('continue')}
           data-testid="launch-continue"
         >
@@ -78,6 +83,11 @@ export function LaunchPanel({
         </Button>
       </div>
       {otherRunning && <p className="mt-2 text-2xs text-fg-faint">{t('launch.continueBusy')}</p>}
+      <ConversationList
+        projectId={projectId}
+        terminalId={terminalId}
+        onPick={(sessionId) => start('continue', sessionId)}
+      />
     </div>
   )
 }

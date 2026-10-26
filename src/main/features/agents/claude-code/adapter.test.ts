@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { PermissionMode } from '@shared/types'
 import { claudeCodeAdapter } from './adapter'
@@ -19,6 +22,15 @@ describe('claudeCodeAdapter.launchArgs', () => {
       '--settings',
       '/data/claude-settings.json',
       '--session-id',
+      'abc',
+    ])
+  })
+
+  it('resumes a chosen conversation', () => {
+    expect(claudeCodeAdapter.launchArgs({ ...base, mode: 'resume', sessionId: 'abc' })).toEqual([
+      '--settings',
+      '/data/claude-settings.json',
+      '--resume',
       'abc',
     ])
   })
@@ -125,7 +137,30 @@ describe('claudeCodeAdapter.isNothingToContinue', () => {
     expect(
       claudeCodeAdapter.isNothingToContinue('\x1b[2mNo conversation found to continue\x1b[0m'),
     ).toBe(true)
+    expect(
+      claudeCodeAdapter.isNothingToContinue('No conversation found with session ID: abc'),
+    ).toBe(true)
     expect(claudeCodeAdapter.isNothingToContinue('Welcome')).toBe(false)
+  })
+})
+
+describe('claudeCodeAdapter conversations on disk', () => {
+  it('finds a conversation by id in the folder Claude Code keeps for the project', async () => {
+    const config = mkdtempSync(path.join(os.tmpdir(), 'trellis-cfg-'))
+    const root = mkdtempSync(path.join(os.tmpdir(), 'trellis-proj-'))
+    try {
+      const env = { CLAUDE_CONFIG_DIR: config }
+      expect(await claudeCodeAdapter.hasPriorSession(root, env)).toBe(false)
+      const dir = path.join(config, 'projects', realpathSync(root).replace(/[^a-zA-Z0-9]/g, '-'))
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(path.join(dir, 'abc.jsonl'), '{}\n')
+      expect(await claudeCodeAdapter.hasPriorSession(root, env)).toBe(true)
+      expect(await claudeCodeAdapter.hasSession(root, 'abc', env)).toBe(true)
+      expect(await claudeCodeAdapter.hasSession(root, 'other', env)).toBe(false)
+    } finally {
+      rmSync(config, { recursive: true, force: true })
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })
 

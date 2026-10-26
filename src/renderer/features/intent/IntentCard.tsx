@@ -4,7 +4,14 @@ import { ChevronRight, Flag, Pencil, Plus, RotateCcw, Target } from 'lucide-reac
 import { pendingDecisions } from '@shared/decisions'
 import { pendingBehaviors } from '@shared/specs'
 import { checkTask } from '@shared/task-check'
-import { activeTask, latestIntent, taskProgress } from '@shared/tasks'
+import { lastTaskOf, taskProgress, untaskedSince } from '@shared/task-progress'
+import {
+  latestIntent,
+  openConversations,
+  taskForTab,
+  tasksElsewhere,
+  type Task,
+} from '@shared/tasks'
 import type { TurnItem } from '@shared/timeline'
 import type { IntentData } from '@shared/types'
 import { Button } from '../../components/ui'
@@ -18,13 +25,15 @@ import { pasteIntoTerminal } from '../terminal'
 import { IntentForm, type FormMode } from './IntentForm'
 import { TaskCheckNotice } from './TaskCheckNotice'
 import { TaskDetails } from './TaskDetails'
+import { TasksElsewhere } from './TasksElsewhere'
 
 const NO_EVENTS: never[] = []
 
 /**
- * The task the human is working on (ADR-0034): what they are about to do, what must not break and
- * where they expect changes, written before the work. It follows the task across its turns, asks
- * when the work may have moved on, and sums up when the task is finished.
+ * The task the human is working on in the Claude tab in view (ADR-0034, 0035): what they are about
+ * to do, what must not break and where they expect changes, written before the work. It follows
+ * the task across its turns, asks when the work may have moved on, and sums up when the task is
+ * finished. Each conversation has its own task; a task can be taken over from another one.
  */
 export function IntentCard() {
   const { t } = useTranslation()
@@ -42,8 +51,12 @@ export function IntentCard() {
   const [open, setOpen] = useState(true)
 
   const turns = useMemo(() => timeline.filter((i): i is TurnItem => i.type === 'turn'), [timeline])
-  const active = activeTask(tasks)
-  const shown = active ?? tasks.at(-1) ?? null
+  const terminalId = claude?.id ?? null
+  const sessionId = claude?.sessionId ?? null
+  const tab = useMemo(() => ({ terminalId, sessionId }), [terminalId, sessionId])
+  const active = taskForTab(tasks, tab)
+  const shown = active ?? lastTaskOf(tasks, turns, sessionId)
+  const elsewhere = active ? [] : tasksElsewhere(tasks, tab)
   const progress = useMemo(() => (shown ? taskProgress(shown, turns) : null), [shown, turns])
   const pending = useMemo(() => {
     const keys = new Set(progress?.turnKeys ?? [])
@@ -52,7 +65,8 @@ export function IntentCard() {
       behaviors: pendingBehaviors(events).filter((b) => keys.has(b.promptId ?? '')).length,
     }
   }, [events, progress])
-  const check = active ? checkTask(active, turns, events, now) : null
+  const check = active ? checkTask(active, turns, now) : null
+  const lastProject = tasks.findLast((x) => x.scope === 'project')
 
   if (!project) return null
 
@@ -68,12 +82,14 @@ export function IntentCard() {
   const save = async (intent: IntentData, andPaste: boolean): Promise<void> => {
     if (!intent.text || !form) return
     if (form.kind === 'refine' && active) {
-      await api.intent.save(project.id, { ...intent, taskId: active.taskId })
+      await api.intent.save(project.id, { ...intent, taskId: active.taskId }, terminalId)
     } else {
       const from = form.kind === 'new' ? form.from : null
-      // The task in progress ends where the new one starts.
-      if (active) await api.intent.done(project.id, active.taskId, from ?? undefined)
-      await api.intent.save(project.id, from ? { ...intent, from } : intent)
+      // The task in progress here ends where the new one starts, unless another conversation is
+      // still on it.
+      if (active && !openConversations(active).some((id) => id !== sessionId))
+        await api.intent.done(project.id, active.taskId, from ?? undefined)
+      await api.intent.save(project.id, from ? { ...intent, from } : intent, terminalId)
     }
     setForm(null)
     if (andPaste) paste(intent.text)
@@ -86,8 +102,18 @@ export function IntentCard() {
   const reopen = (): void => {
     // Saving the last intent again under the same task id opens the task again.
     if (shown && !active)
-      void api.intent.save(project.id, { ...latestIntent(shown), taskId: shown.taskId })
+      void api.intent.save(project.id, { ...latestIntent(shown), taskId: shown.taskId }, terminalId)
   }
+
+  // The conversation goes on with a task from another one; turns it had without a task go along.
+  const take = (task: Task): void =>
+    void api.intent.keep(
+      project.id,
+      task.taskId,
+      terminalId,
+      untaskedSince(turns, sessionId) ?? undefined,
+    )
+  const canReopen = shown?.scope === 'conversation' || (shown !== null && shown === lastProject)
 
   const sendInvariants = async (): Promise<void> => {
     const lines = (shown ? (latestIntent(shown).mustNot ?? '') : '')
@@ -153,7 +179,7 @@ export function IntentCard() {
               </>
             ) : (
               <>
-                {shown && (
+                {shown && canReopen && (
                   <Button size="xs" variant="ghost" onClick={reopen} data-testid="intent-reopen">
                     <RotateCcw size={11} />
                     {t('intent.reopen')}
@@ -187,7 +213,7 @@ export function IntentCard() {
         <TaskCheckNotice
           check={check}
           prompt={turns.find((x) => x.startedAt === check.boundary)?.prompt ?? null}
-          onKeep={() => void api.intent.keep(project.id, active.taskId)}
+          onKeep={() => void api.intent.keep(project.id, active.taskId, terminalId)}
           onFinish={() => finish(check.boundary)}
           onNewTask={() => edit({ kind: 'new', from: check.boundary })}
         />
@@ -203,9 +229,20 @@ export function IntentCard() {
         />
       )}
 
+      {open && !form && active?.waiting && (
+        <p
+          className="mt-1.5 pl-4.75 text-2xs leading-relaxed text-fg-faint"
+          data-testid="intent-waiting"
+        >
+          {t('intent.waiting')}
+        </p>
+      )}
+
       {open && !form && !shown && (
         <p className="mt-1.5 pl-4.75 text-xs leading-relaxed text-fg-faint">{t('intent.empty')}</p>
       )}
+
+      {open && !form && <TasksElsewhere tasks={elsewhere} onTake={take} />}
     </div>
   )
 }

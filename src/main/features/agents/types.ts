@@ -1,10 +1,10 @@
-import type { AgentId, LaunchMode, PermissionMode, TrellisEvent } from '@shared/types'
+import type { AgentId, ClaudeLaunchMode, PermissionMode, TrellisEvent } from '@shared/types'
 import type { Platform } from '../../platform/os'
 
 export interface LaunchRequest {
-  mode: LaunchMode
+  mode: ClaudeLaunchMode
   permissionMode: PermissionMode
-  /** Pre-assigned id for a new session; null when continuing. */
+  /** Pre-assigned id for a new session, the conversation to resume; null for --continue. */
   sessionId: string | null
   extraArgs: string[]
   /** File produced by prepareBridge(). */
@@ -24,7 +24,9 @@ export interface AgentAdapter {
   readonly executableName: string
   /** Whether "continue the last conversation" can work in this folder. */
   hasPriorSession(projectRoot: string, env: NodeJS.ProcessEnv): Promise<boolean>
-  /** Recognizes the output of a continue attempt that found nothing to continue. */
+  /** Whether the agent still has this conversation of the folder (so it can be resumed). */
+  hasSession(projectRoot: string, sessionId: string, env: NodeJS.ProcessEnv): Promise<boolean>
+  /** Recognizes the output of a continue or resume attempt that found nothing to open. */
   isNothingToContinue(output: string): boolean
   /** Writes the config that makes the agent report events to the bridge. Returns its path. */
   prepareBridge(dir: string, bridgeUrl: string): Promise<string>

@@ -35,6 +35,20 @@ const PERMISSION_FLAGS = [
   '--allow-dangerously-skip-permissions',
 ]
 
+/** Where Claude Code may keep the conversations of a project folder (the path as given and real). */
+function sessionDirs(projectRoot: string, env: NodeJS.ProcessEnv): string[] {
+  const configDir = getEnv(env, 'CLAUDE_CONFIG_DIR') || path.join(os.homedir(), '.claude')
+  const roots = new Set([projectRoot])
+  try {
+    roots.add(realpathSync(projectRoot))
+  } catch {
+    // keep the given path only
+  }
+  return [...roots].map((root) =>
+    path.join(configDir, 'projects', root.replace(/[^a-zA-Z0-9]/g, '-')),
+  )
+}
+
 /** Answer before Claude gives up on the hook (it would then end the turn without our reply). */
 const STOP_REPLY_MS = (STOP_HOOK_TIMEOUT_S - 5) * 1000
 /** Other hooks only need the work done for them to start (e.g. the turn's snapshot). */
@@ -56,18 +70,11 @@ export const claudeCodeAdapter: AgentAdapter = {
   executableName: 'claude',
 
   // Claude Code keeps one folder per working directory under <config>/projects, named by replacing
-  // every non-alphanumeric character with '-'. Internal layout: a wrong guess only means we start
-  // a new conversation, and launch falls back if --continue finds nothing anyway.
+  // every non-alphanumeric character with '-', and one <session id>.jsonl per conversation in it.
+  // Internal layout: a wrong guess only means we start a new conversation (launch also falls back
+  // if --continue finds nothing), or a conversation shows as not openable.
   async hasPriorSession(projectRoot, env) {
-    const configDir = getEnv(env, 'CLAUDE_CONFIG_DIR') || path.join(os.homedir(), '.claude')
-    const roots = new Set([projectRoot])
-    try {
-      roots.add(realpathSync(projectRoot))
-    } catch {
-      // keep the given path only
-    }
-    for (const root of roots) {
-      const dir = path.join(configDir, 'projects', root.replace(/[^a-zA-Z0-9]/g, '-'))
+    for (const dir of sessionDirs(projectRoot, env)) {
       try {
         if ((await fs.readdir(dir)).some((f) => f.endsWith('.jsonl'))) return true
       } catch {
@@ -77,8 +84,21 @@ export const claudeCodeAdapter: AgentAdapter = {
     return false
   },
 
+  async hasSession(projectRoot, sessionId, env) {
+    for (const dir of sessionDirs(projectRoot, env)) {
+      try {
+        await fs.access(path.join(dir, `${sessionId}.jsonl`))
+        return true
+      } catch {
+        // not in this folder
+      }
+    }
+    return false
+  },
+
   isNothingToContinue(output) {
-    return /no conversation found to continue/i.test(output)
+    // "No conversation found to continue" (--continue) or "… with session ID: …" (--resume).
+    return /no conversation found/i.test(output)
   },
 
   async prepareBridge(dir, bridgeUrl) {
@@ -94,6 +114,8 @@ export const claudeCodeAdapter: AgentAdapter = {
       request.extraArgs.some((a) => flags.includes(a.split('=')[0]!))
     if (!userSets(SESSION_FLAGS)) {
       if (request.mode === 'continue') args.push('--continue')
+      else if (request.mode === 'resume' && request.sessionId)
+        args.push('--resume', request.sessionId)
       else if (request.sessionId) args.push('--session-id', request.sessionId)
     }
     if (!userSets(PERMISSION_FLAGS)) args.push(...permissionArgs(request.permissionMode))
