@@ -64,4 +64,5 @@
 | [0031](0031-main-process-error-log.md) | 메인 프로세스 오류는 데이터 폴더의 로그 파일에 남긴다 | 채택 |
 | [0032](0032-renderer-store-slices.md) | renderer 상태는 store 하나를 slice 파일로 나눠 둔다 | 채택 |
 | [0033](0033-file-tree-marks-since-head.md) | 파일 트리의 변경 표시는 항상 마지막 커밋 기준으로 한다 | 채택 |
-| [0034](0034-intent-as-tasks.md) | 작업 의도는 작업 단위로 시작하고 마무리한다 | 채택 |
+| [0034](0034-intent-as-tasks.md) | 작업 의도는 작업 단위로 시작하고 마무리한다 | 채택 (작업 하나·새 대화 질문은 0035로 대체) |
+| [0035](0035-tasks-per-conversation.md) | 작업 의도를 Claude 대화에 묶고, 대화를 골라 다시 연다 | 채택 |
