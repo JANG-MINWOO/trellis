@@ -144,6 +144,28 @@ describe('claudeCodeAdapter.isNothingToContinue', () => {
   })
 })
 
+describe('claudeCodeAdapter.leavesConversation', () => {
+  const end = (reason: string) =>
+    ({
+      id: 'e',
+      ts: 1,
+      projectId: 'p',
+      agent: 'claude-code',
+      sessionId: 'old',
+      promptId: null,
+      terminalId: 't',
+      kind: 'session.end',
+      data: { reason },
+    }) as const
+
+  it('knows /clear and /resume keep the process in another conversation', () => {
+    expect(claudeCodeAdapter.leavesConversation(end('clear'))).toBe(true)
+    expect(claudeCodeAdapter.leavesConversation(end('resume'))).toBe(true)
+    expect(claudeCodeAdapter.leavesConversation(end('prompt_input_exit'))).toBe(false)
+    expect(claudeCodeAdapter.leavesConversation(end('other'))).toBe(false)
+  })
+})
+
 describe('claudeCodeAdapter conversations on disk', () => {
   it('finds a conversation by id in the folder Claude Code keeps for the project', async () => {
     const config = mkdtempSync(path.join(os.tmpdir(), 'trellis-cfg-'))

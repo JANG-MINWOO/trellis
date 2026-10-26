@@ -77,17 +77,18 @@ export class TerminalService {
   }
 
   /**
-   * Called for every agent event so we can learn the session id behind a terminal. After `/clear`
-   * the tab's next conversation is unknown until its first prompt (ADR-0035).
+   * Called for every agent event so we can learn the session id behind a terminal. When the agent
+   * leaves a conversation but keeps running (`/clear`, `/resume`), the tab's next conversation is
+   * unknown until its first prompt, so the ended one must not stay (ADR-0035).
    */
   noteAgentEvent(terminalId: string | null, event: TrellisEvent): void {
     if (!terminalId) return
     this.sawEvents.add(terminalId)
     const info = this.deps.ptys.get(terminalId)
     if (!info) return
-    const cleared = event.kind === 'session.end' && event.data.reason === 'clear'
-    const sessionId = cleared ? null : event.sessionId
-    if ((cleared || sessionId) && info.sessionId !== sessionId)
+    const left = this.deps.adapter.leavesConversation(event)
+    const sessionId = left ? null : event.sessionId
+    if ((left || sessionId) && info.sessionId !== sessionId)
       this.deps.ptys.update(terminalId, { sessionId })
   }
 

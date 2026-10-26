@@ -87,7 +87,7 @@ function interactive() {
     ]),
   )
   const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null)
-  const sessionId = flag('--session-id') ?? flag('--resume') ?? 'fake-session'
+  let sessionId = flag('--session-id') ?? flag('--resume') ?? 'fake-session'
   // Like the real CLI: one <session id>.jsonl per conversation under <config>/projects/<cwd>, and
   // --resume of a conversation it does not have fails at once.
   const config = process.env.CLAUDE_CONFIG_DIR
@@ -137,6 +137,15 @@ function interactive() {
     // Bracketed-paste markers arrive when text comes from Trellis' input box.
     const line = raw.replaceAll('\x1b[200~', '').replaceAll('\x1b[201~', '')
     if (!line) return
+    // Like /resume in the real CLI: the conversation ends (SessionEnd "resume") and the same
+    // process goes on in another one, which hooks only show from its next prompt on.
+    const resume = /^\/resume (\S+)$/.exec(line)
+    if (resume) {
+      await post({ hook_event_name: 'SessionEnd', reason: 'resume' })
+      sessionId = resume[1]
+      process.stdout.write(`\r\nResumed ${sessionId}\r\n> `)
+      return
+    }
     const promptId = randomUUID()
     if (transcript) {
       fs.mkdirSync(path.dirname(transcript), { recursive: true })

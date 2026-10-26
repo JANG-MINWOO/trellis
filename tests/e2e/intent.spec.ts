@@ -188,6 +188,21 @@ test('each conversation keeps its task, and opening it again brings the task bac
     await win.getByTestId('tab-claude-2').click()
     await expect(card.getByTestId('task-details')).toContainText('B 로고 바꾸기')
     await expect(card.getByTestId('intent-status')).toContainText(/턴 1개|1 turn/)
+
+    // Switching conversation inside Claude (/resume): until the next prompt the tab's conversation
+    // is unknown, so an intent written then waits for it instead of joining the one that ended.
+    await win.getByTestId('tab-claude-1').click()
+    await send('/resume switched-conversation')
+    await expect(card.getByTestId('intent-status')).toHaveCount(0)
+    await expect(card.getByTestId('tasks-elsewhere')).toContainText('A 로그인 잠금')
+    await writeTask('C 다른 대화')
+    await expect(card.getByTestId('intent-waiting')).toBeVisible()
+    await send('work on C')
+    await expect(card.getByTestId('intent-status')).toContainText(/턴 1개|1 turn/, {
+      timeout: 20_000,
+    })
+    await expect(card.getByTestId('task-details')).toContainText('C 다른 대화')
+    await expect(card.getByTestId('intent-waiting')).toHaveCount(0)
   } finally {
     await app.close()
   }

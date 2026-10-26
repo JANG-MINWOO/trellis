@@ -28,6 +28,11 @@ export interface AgentAdapter {
   hasSession(projectRoot: string, sessionId: string, env: NodeJS.ProcessEnv): Promise<boolean>
   /** Recognizes the output of a continue or resume attempt that found nothing to open. */
   isNothingToContinue(output: string): boolean
+  /**
+   * The agent left this conversation but keeps running in the tab (e.g. `/clear`, or switching to
+   * another conversation): which conversation the tab is in is unknown until its next prompt.
+   */
+  leavesConversation(event: TrellisEvent): boolean
   /** Writes the config that makes the agent report events to the bridge. Returns its path. */
   prepareBridge(dir: string, bridgeUrl: string): Promise<string>
   launchArgs(request: LaunchRequest): string[]

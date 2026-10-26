@@ -26,6 +26,9 @@ const SESSION_MARKER_PREFIXES = [
   'CLAUDE_CODE_MESSAGING_',
 ]
 
+/** SessionEnd reasons after which the same process goes on in another conversation. */
+const LEAVING_REASONS = new Set(['clear', 'resume'])
+
 /** Flags that choose which conversation to open; if the user passes one we do not add ours. */
 const SESSION_FLAGS = ['--continue', '-c', '--resume', '-r', '--session-id', '--fork-session']
 /** Same for permissions. */
@@ -99,6 +102,12 @@ export const claudeCodeAdapter: AgentAdapter = {
   isNothingToContinue(output) {
     // "No conversation found to continue" (--continue) or "… with session ID: …" (--resume).
     return /no conversation found/i.test(output)
+  },
+
+  leavesConversation(event) {
+    // SessionEnd reasons: "clear" (/clear) and "resume" (/resume picked another conversation)
+    // keep the process; the others end it.
+    return event.kind === 'session.end' && LEAVING_REASONS.has(event.data.reason)
   },
 
   async prepareBridge(dir, bridgeUrl) {
